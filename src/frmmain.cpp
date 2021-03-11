@@ -29,6 +29,7 @@
 #include <QComboBox>
 #include <QScrollBar>
 #include <QShortcut>
+#include <QStandardPaths>
 #include <QAction>
 #include <QLayout>
 #include <QMimeData>
@@ -85,7 +86,9 @@ frmMain::frmMain(QWidget *parent) :
                        << "black";
 
     // Loading settings
-    m_settingsFileName = qApp->applicationDirPath() + "/settings.ini";
+    //m_settingsFileName = qApp->applicationDirPath() + "/settings.ini";
+    m_settingsFileName = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/settings.ini";
+    qDebug() << "using settings file:" << m_settingsFileName;
     preloadSettings();
 
     m_settings = new frmSettings(this);
@@ -287,7 +290,8 @@ frmMain::frmMain(QWidget *parent) :
 }
 
 frmMain::~frmMain()
-{    
+{
+    qDebug() << "saving settings";
     saveSettings();
 
     delete m_senderErrorBox;
