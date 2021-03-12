@@ -86,8 +86,6 @@ public:
     void setAutoCompletion(bool autoCompletion);
     int units();
     void setUnits(int units);
-    QString touchCommand();
-    void setTouchCommand(QString touchCommand);
     bool simplify();
     void setSimplify(bool simplify);
     double simplifyPrecision();
@@ -118,6 +116,26 @@ public:
     void setIgnoreErrors(bool value);
     bool autoLine();
     void setAutoLine(bool value);
+
+
+    // Probing getters/setters
+    void setToolProbePositionX(double val);
+    double toolProbePositionX();
+
+    void setToolProbePositionY(double val);
+    double toolProbePositionY();
+
+    void setToolProbePositionZ(double val);
+    double toolProbePositionZ();
+
+    void setToolProbeSeek(double val);
+    double toolProbeSeek();
+
+    void setToolProbeFeed(double val);
+    double toolProbeFeed();
+
+    void setToolProbeThrow(double val);
+    double toolProbeThrow();
 
 protected:
     void showEvent(QShowEvent *se);

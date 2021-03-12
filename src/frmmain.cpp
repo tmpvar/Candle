@@ -224,7 +224,7 @@ frmMain::frmMain(QWidget *parent) :
     ui->tblProgram->setModel(&m_programModel);
     ui->tblProgram->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Stretch);
     connect(ui->tblProgram->verticalScrollBar(), SIGNAL(actionTriggered(int)), this, SLOT(onScroolBarAction(int)));
-    connect(ui->tblProgram->selectionModel(), SIGNAL(currentChanged(QModelIndex,QModelIndex)), this, SLOT(onTableCurrentChanged(QModelIndex,QModelIndex)));    
+    connect(ui->tblProgram->selectionModel(), SIGNAL(currentChanged(QModelIndex,QModelIndex)), this, SLOT(onTableCurrentChanged(QModelIndex,QModelIndex)));
     clearTable();
 
     // Console window handling
@@ -352,7 +352,7 @@ void frmMain::loadSettings()
     m_settings->setSimplifyPrecision(set.value("simplifyPrecision", 0).toDouble());
     m_settings->setGrayscaleSegments(set.value("grayscaleSegments", false).toBool());
     m_settings->setGrayscaleSCode(set.value("grayscaleSCode", true).toBool());
-    m_settings->setDrawModeVectors(set.value("drawModeVectors", true).toBool());    
+    m_settings->setDrawModeVectors(set.value("drawModeVectors", true).toBool());
     m_settings->setMoveOnRestore(set.value("moveOnRestore", false).toBool());
     m_settings->setRestoreMode(set.value("restoreMode", 0).toInt());
     m_settings->setLineWidth(set.value("lineWidth", 1).toDouble());
@@ -378,6 +378,16 @@ void frmMain::loadSettings()
     m_settings->setPanelSpindle(set.value("panelSpindleVisible", true).toBool());
     m_settings->setPanelOverriding(set.value("panelOverridingVisible", true).toBool());
     m_settings->setPanelJog(set.value("panelJogVisible", true).toBool());
+
+
+    // Probing
+    m_settings->setToolProbePositionX(set.value("toolProbePositionX", 0.0).toDouble());
+    m_settings->setToolProbePositionY(set.value("toolProbePositionY", 0.0).toDouble());
+    m_settings->setToolProbePositionZ(set.value("toolProbePositionZ", 0.0).toDouble());
+    m_settings->setToolProbeSeek(set.value("toolProbeSeek", 0.0).toDouble());
+    m_settings->setToolProbeFeed(set.value("toolProbeFeed", 0.0).toDouble());
+    m_settings->setToolProbeThrow(set.value("toolProbeThrow", 0.0).toDouble());
+
 
     ui->grpConsole->setMinimumHeight(set.value("consoleMinHeight", 100).toInt());
 
@@ -427,7 +437,6 @@ void frmMain::loadSettings()
     m_storedKeyboardControl = set.value("keyboardControl", false).toBool();
 
     m_settings->setAutoCompletion(set.value("autoCompletion", true).toBool());
-    m_settings->setTouchCommand(set.value("touchCommand").toString());
     m_settings->setSafePositionCommand(set.value("safePositionCommand").toString());
 
     foreach (StyledToolButton* button, this->findChildren<StyledToolButton*>(QRegExp("cmdUser\\d"))) {
@@ -529,7 +538,7 @@ void frmMain::saveSettings()
     set.setValue("header", ui->tblProgram->horizontalHeader()->saveState());
     set.setValue("splitter", ui->splitter->saveState());
     set.setValue("formGeometry", this->saveGeometry());
-    set.setValue("formSettingsSize", m_settings->size());    
+    set.setValue("formSettingsSize", m_settings->size());
     set.setValue("userCommandsPanel", ui->grpUserCommands->isChecked());
     set.setValue("heightmapPanel", ui->grpHeightMap->isChecked());
     set.setValue("spindlePanel", ui->grpSpindle->isChecked());
@@ -544,7 +553,6 @@ void frmMain::saveSettings()
     set.setValue("recentFiles", m_recentFiles);
     set.setValue("recentHeightmaps", m_recentHeightmaps);
     set.setValue("lastFolder", m_lastFolder);
-    set.setValue("touchCommand", m_settings->touchCommand());
     set.setValue("safePositionCommand", m_settings->safePositionCommand());
     set.setValue("panelUserCommandsVisible", m_settings->panelUserCommands());
     set.setValue("panelHeightmapVisible", m_settings->panelHeightmap());
@@ -596,6 +604,15 @@ void frmMain::saveSettings()
 
     for (int i = 0; i < ui->cboCommand->count(); i++) list.append(ui->cboCommand->itemText(i));
     set.setValue("recentCommands", list);
+
+    // Probing
+    set.setValue("toolProbePositionX", m_settings->toolProbePositionX());
+    set.setValue("toolProbePositionY", m_settings->toolProbePositionY());
+    set.setValue("toolProbePositionZ", m_settings->toolProbePositionZ());
+    set.setValue("toolProbeSeek", m_settings->toolProbeSeek());
+    set.setValue("toolProbeFeed", m_settings->toolProbeFeed());
+    set.setValue("toolProbeThrow", m_settings->toolProbeThrow());
+
 }
 
 bool frmMain::saveChanges(bool heightMapMode)
@@ -727,7 +744,7 @@ void frmMain::updateControlsState() {
 
     ui->cmdFileSend->menu()->actions().first()->setEnabled(!ui->cmdHeightMapMode->isChecked());
 
-    m_selectionDrawer.setVisible(!ui->cmdHeightMapMode->isChecked());    
+    m_selectionDrawer.setVisible(!ui->cmdHeightMapMode->isChecked());
 }
 
 void frmMain::openPort()
@@ -1035,7 +1052,7 @@ void frmMain::onSerialPortReadyRead()
             // Get overridings
             static QRegExp ov("Ov:([^,]*),([^,]*),([^,^>^|]*)");
             if (ov.indexIn(data) != -1)
-            {                
+            {
                 updateOverride(ui->slbFeedOverride, ov.cap(1).toInt(), 0x91);
                 updateOverride(ui->slbSpindleOverride, ov.cap(3).toInt(), 0x9a);
 
@@ -1086,7 +1103,7 @@ void frmMain::onSerialPortReadyRead()
             }
 
             // Get feed/spindle values
-            static QRegExp fs("FS:([^,]*),([^,^|^>]*)");            
+            static QRegExp fs("FS:([^,]*),([^,^|^>]*)");
             if (fs.indexIn(data) != -1) {
                 ui->glwVisualizer->setSpeedState((QString(tr("F/S: %1 / %2")).arg(fs.cap(1)).arg(fs.cap(2))));
             }
@@ -1260,7 +1277,7 @@ void frmMain::onSerialPortReadyRead()
                         if (QSysInfo::windowsVersion() >= QSysInfo::WV_WINDOWS7) {
                             if (m_taskBarProgress) m_taskBarProgress->setValue(m_fileProcessedCommandIndex);
                         }
-#endif                                               
+#endif
                         // Process error messages
                         static bool holding = false;
                         static QString errors;
@@ -1575,7 +1592,7 @@ void frmMain::dragEnterEvent(QDragEnterEvent *dee)
 }
 
 void frmMain::dropEvent(QDropEvent *de)
-{    
+{
     QString fileName = de->mimeData()->urls().at(0).toLocalFile();
 
     if (!m_heightMapMode) {
@@ -1895,7 +1912,9 @@ void frmMain::onActSendFromLineTriggered()
 
         QStringList commands;
 
+        commands.append(QString("G90 G53 G0 Z0 F1000"));
         commands.append(QString("M3 S%1").arg(qMax<double>(lastSegment->getSpindleSpeed(), ui->slbSpindle->value())));
+        commands.append(QString("G04 P2"));
 
         commands.append(QString("G21 G90 G0 X%1 Y%2")
                         .arg(firstSegment->getStart().x())
@@ -1994,7 +2013,7 @@ void frmMain::on_cmdFileAbort_clicked()
 }
 
 void frmMain::storeParserState()
-{    
+{
     m_storedParserStatus = ui->glwVisualizer->parserStatus().remove(
                 QRegExp("GC:|\\[|\\]|G[01234]\\s|M[0345]+\\s|\\sF[\\d\\.]+|\\sS[\\d\\.]+"));
 }
@@ -2238,7 +2257,7 @@ void frmMain::applySettings() {
     m_codeDrawer->setDrawMode(m_settings->drawModeVectors() ? GcodeDrawer::Vectors : GcodeDrawer::Raster);
     m_codeDrawer->setGrayscaleMin(m_settings->laserPowerMin());
     m_codeDrawer->setGrayscaleMax(m_settings->laserPowerMax());
-    m_codeDrawer->update();    
+    m_codeDrawer->update();
 
     m_selectionDrawer.setColor(m_settings->colors("ToolpathHighlight"));
 
@@ -2375,13 +2394,51 @@ void frmMain::on_cmdHome_clicked()
 
 void frmMain::on_cmdTouch_clicked()
 {
-//    m_homing = true;
+    #if 1
+        sendCommand("G21", -1, m_settings->showUICommands());
+        sendCommand("G90", -1, m_settings->showUICommands());
+        sendCommand("G53Z0F4000", -1, m_settings->showUICommands());
+        sendCommand(
+            QString("G53 X%1 Y%2").arg(
+                QString::number(m_settings->toolProbePositionX()),
+                QString::number(m_settings->toolProbePositionY())
+            ),
+            -1,
+            m_settings->showUICommands()
+        );
+        sendCommand("G91", -1, m_settings->showUICommands());
+        sendCommand(
+            QString("G38.2 Z%1 F%2").arg(
+                QString::number(m_settings->toolProbePositionZ()),
+                QString::number(m_settings->toolProbeSeek())
+            ),
+            -1,
+            m_settings->showUICommands()
+        );
+        sendCommand(
+            QString("G38.4 Z%1 F%2").arg(
+                QString::number(m_settings->toolProbeThrow()),
+                QString::number(m_settings->toolProbeFeed())
+            ),
+            -1,
+            m_settings->showUICommands()
+        );
+        sendCommand("G10L20P1Z0", -1, m_settings->showUICommands());
+        sendCommand("G90", -1, m_settings->showUICommands());
+        sendCommand("G53G1Z0F1000", -1, m_settings->showUICommands());
 
-    QStringList list = m_settings->touchCommand().split(";");
+        // TODO: make this optional
+        // sendCommand("G54X0Y0Z0F4000", -1, m_settings->showUICommands());
 
-    foreach (QString cmd, list) {
-        sendCommand(cmd.trimmed(), -1, m_settings->showUICommands());
-    }
+
+    #else
+
+        QStringList list = m_settings->touchCommand().split(";");
+
+        foreach (QString cmd, list) {
+            sendCommand(cmd.trimmed(), -1, m_settings->showUICommands());
+        }
+    #endif
 }
 
 void frmMain::on_cmdZeroXY_clicked()
@@ -2792,7 +2849,7 @@ bool frmMain::eventFilter(QObject *obj, QEvent *event)
                 && !static_cast<QKeyEvent*>(event)->isAutoRepeat()) {
 
             switch (static_cast<QKeyEvent*>(event)->key()) {
-            case Qt::Key_4:                
+            case Qt::Key_4:
                 if (event->type() == QEvent::KeyPress) emit ui->cmdXMinus->pressed(); else emit ui->cmdXMinus->released();
                 break;
             case Qt::Key_6:

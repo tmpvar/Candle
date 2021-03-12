@@ -72,8 +72,8 @@ QGroupBox {
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>436</width>
-          <height>1749</height>
+          <width>397</width>
+          <height>1682</height>
          </rect>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -216,7 +216,7 @@ QGroupBox {
                  <enum>QAbstractSpinBox::NoButtons</enum>
                 </property>
                 <property name="maximum">
-                 <number>99999</number>
+                 <double>99999.000000000000000</double>
                 </property>
                </widget>
               </item>
@@ -241,7 +241,7 @@ QGroupBox {
                  <enum>QAbstractSpinBox::NoButtons</enum>
                 </property>
                 <property name="maximum">
-                 <number>9999</number>
+                 <double>9999.000000000000000</double>
                 </property>
                </widget>
               </item>
@@ -309,7 +309,7 @@ QGroupBox {
                  <enum>QAbstractSpinBox::NoButtons</enum>
                 </property>
                 <property name="maximum">
-                 <number>99999</number>
+                 <double>99999.000000000000000</double>
                 </property>
                </widget>
               </item>
@@ -334,7 +334,7 @@ QGroupBox {
                  <enum>QAbstractSpinBox::NoButtons</enum>
                 </property>
                 <property name="maximum">
-                 <number>99999</number>
+                 <double>99999.000000000000000</double>
                 </property>
                </widget>
               </item>
@@ -366,7 +366,7 @@ QGroupBox {
                  <enum>QAbstractSpinBox::NoButtons</enum>
                 </property>
                 <property name="maximum">
-                 <number>99999</number>
+                 <double>99999.000000000000000</double>
                 </property>
                </widget>
               </item>
@@ -391,7 +391,7 @@ QGroupBox {
                  <enum>QAbstractSpinBox::NoButtons</enum>
                 </property>
                 <property name="maximum">
-                 <number>99999</number>
+                 <double>99999.000000000000000</double>
                 </property>
                </widget>
               </item>
@@ -416,7 +416,7 @@ QGroupBox {
                  <enum>QAbstractSpinBox::NoButtons</enum>
                 </property>
                 <property name="maximum">
-                 <number>99999</number>
+                 <double>99999.000000000000000</double>
                 </property>
                </widget>
               </item>
@@ -426,34 +426,235 @@ QGroupBox {
           </widget>
          </item>
          <item>
+          <widget class="GroupBox" name="grpToolHeightProbing">
+           <property name="minimumSize">
+            <size>
+             <width>108</width>
+             <height>139</height>
+            </size>
+           </property>
+           <property name="title">
+            <string>Tool Height Probing</string>
+           </property>
+           <widget class="QWidget" name="gridLayoutWidget">
+            <property name="geometry">
+             <rect>
+              <x>10</x>
+              <y>20</y>
+              <width>361</width>
+              <height>111</height>
+             </rect>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_11">
+             <item row="2" column="1">
+              <widget class="NumberBox" name="txtToolProbeSeek">
+               <property name="buttonSymbols">
+                <enum>QAbstractSpinBox::NoButtons</enum>
+               </property>
+               <property name="decimals">
+                <number>0</number>
+               </property>
+               <property name="maximum">
+                <double>1000.000000000000000</double>
+               </property>
+               <property name="value">
+                <double>500.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <layout class="QHBoxLayout" name="horizontalLayout_5">
+               <item>
+                <widget class="QLabel" name="label_8">
+                 <property name="toolTip">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Probe position in machine coordinates.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;You can find this by homing the machine and jogging the machine into position.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                 <property name="text">
+                  <string>Probe Position:</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="1" column="1">
+              <widget class="NumberBox" name="txtToolProbePositionX">
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;position in X, in machine coordinates&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="buttonSymbols">
+                <enum>QAbstractSpinBox::NoButtons</enum>
+               </property>
+               <property name="minimum">
+                <double>-10000.000000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>10000.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_9">
+               <item>
+                <widget class="NumberBox" name="txtToolProbeThrow">
+                 <property name="toolTip">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;position in X, in machine coordinates&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                 <property name="buttonSymbols">
+                  <enum>QAbstractSpinBox::NoButtons</enum>
+                 </property>
+                 <property name="value">
+                  <double>10.000000000000000</double>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="2" column="0">
+              <layout class="QHBoxLayout" name="horizontalLayout_6">
+               <item>
+                <widget class="QLabel" name="label_9">
+                 <property name="toolTip">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The speed at which to seek into the tool probe.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;If you have a spring loaded probe, then this is fairly forgiving.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;if you do &lt;span style=&quot; font-weight:600;&quot;&gt;not&lt;/span&gt; have a spring loaded probe then you must take your machine's accelleration curve into account, otherwise you will crash into the probe!&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                 <property name="text">
+                  <string>Seek</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="1" column="2">
+              <widget class="NumberBox" name="txtToolProbePositionY">
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;position in Y, in machine coordinates&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="buttonSymbols">
+                <enum>QAbstractSpinBox::NoButtons</enum>
+               </property>
+               <property name="minimum">
+                <double>-10000.000000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>10000.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="3">
+              <widget class="NumberBox" name="txtToolProbeFeed">
+               <property name="buttonSymbols">
+                <enum>QAbstractSpinBox::NoButtons</enum>
+               </property>
+               <property name="decimals">
+                <number>0</number>
+               </property>
+               <property name="maximum">
+                <double>500.000000000000000</double>
+               </property>
+               <property name="value">
+                <double>50.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="3">
+              <widget class="NumberBox" name="txtToolProbePositionZ">
+               <property name="focusPolicy">
+                <enum>Qt::StrongFocus</enum>
+               </property>
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;position in Z, in machine coordinates&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="buttonSymbols">
+                <enum>QAbstractSpinBox::NoButtons</enum>
+               </property>
+               <property name="minimum">
+                <double>-10000.000000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>10000.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLabel" name="label_42">
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The speed in which the machine will pull away from the probe, this is generally 1/10th the seek speed.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="text">
+                <string>x</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="3">
+              <widget class="QLabel" name="label_44">
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The speed in which the machine will pull away from the probe, this is generally 1/10th the seek speed.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="text">
+                <string>z</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="2">
+              <widget class="QLabel" name="label_40">
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The speed in which the machine will pull away from the probe, this is generally 1/10th the seek speed.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="text">
+                <string>Feed</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="2">
+              <widget class="QLabel" name="label_43">
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The speed in which the machine will pull away from the probe, this is generally 1/10th the seek speed.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="text">
+                <string>y</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_41">
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;How far in {machine-units} do we need to move away from the switch to deactivate it?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="text">
+                <string>Probe throw</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </widget>
+         </item>
+         <item>
           <widget class="GroupBox" name="groupBox_2">
            <property name="title">
             <string>Control</string>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_9">
-            <item>
-             <widget class="QLabel" name="label_17">
-              <property name="styleSheet">
-               <string notr="true">padding-top: 3;</string>
-              </property>
-              <property name="text">
-               <string>Probe commands:</string>
-              </property>
-              <property name="indent">
-               <number>0</number>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="txtTouchCommand">
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-              <property name="placeholderText">
-               <string>Command 1; command 2; ...</string>
-              </property>
-             </widget>
-            </item>
             <item>
              <widget class="QLabel" name="label_33">
               <property name="styleSheet">
@@ -677,7 +878,7 @@ QGroupBox {
                  <enum>QAbstractSpinBox::NoButtons</enum>
                 </property>
                 <property name="maximum">
-                 <number>99999</number>
+                 <double>99999.000000000000000</double>
                 </property>
                </widget>
               </item>
@@ -1562,7 +1763,6 @@ QGroupBox {
   </customwidget>
  </customwidgets>
  <tabstops>
-  <tabstop>listCategories</tabstop>
   <tabstop>scrollSettings</tabstop>
   <tabstop>cboPort</tabstop>
   <tabstop>cmdRefresh</tabstop>
@@ -1578,6 +1778,53 @@ QGroupBox {
   <tabstop>cmdDefaults</tabstop>
   <tabstop>cmdOK</tabstop>
   <tabstop>cmdCancel</tabstop>
+  <tabstop>chkIgnoreErrors</tabstop>
+  <tabstop>chkAutoLine</tabstop>
+  <tabstop>txtSpindleSpeedMin</tabstop>
+  <tabstop>txtQueryStateTime</tabstop>
+  <tabstop>cboUnits</tabstop>
+  <tabstop>txtRapidSpeed</tabstop>
+  <tabstop>txtAcceleration</tabstop>
+  <tabstop>txtSpindleSpeedMax</tabstop>
+  <tabstop>txtLaserPowerMin</tabstop>
+  <tabstop>txtLaserPowerMax</tabstop>
+  <tabstop>txtToolProbePositionX</tabstop>
+  <tabstop>txtToolProbePositionY</tabstop>
+  <tabstop>txtToolProbePositionZ</tabstop>
+  <tabstop>txtToolProbeSeek</tabstop>
+  <tabstop>txtToolProbeFeed</tabstop>
+  <tabstop>txtToolProbeThrow</tabstop>
+  <tabstop>txtSafeCommand</tabstop>
+  <tabstop>chkMoveOnRestore</tabstop>
+  <tabstop>cboRestoreMode</tabstop>
+  <tabstop>txtUserCommand0</tabstop>
+  <tabstop>txtUserCommand1</tabstop>
+  <tabstop>txtUserCommand2</tabstop>
+  <tabstop>txtUserCommand3</tabstop>
+  <tabstop>txtHeightMapProbingFeed</tabstop>
+  <tabstop>radArcLengthMode</tabstop>
+  <tabstop>txtArcLength</tabstop>
+  <tabstop>radArcDegreeMode</tabstop>
+  <tabstop>txtArcDegree</tabstop>
+  <tabstop>chkZBuffer</tabstop>
+  <tabstop>radMSAA</tabstop>
+  <tabstop>txtLineWidth</tabstop>
+  <tabstop>cboFps</tabstop>
+  <tabstop>radDrawModeVectors</tabstop>
+  <tabstop>radDrawModeRaster</tabstop>
+  <tabstop>radGrayscaleZ</tabstop>
+  <tabstop>radGrayscaleS</tabstop>
+  <tabstop>chkGrayscale</tabstop>
+  <tabstop>txtSimplifyPrecision</tabstop>
+  <tabstop>chkSimplify</tabstop>
+  <tabstop>chkVSync</tabstop>
+  <tabstop>chkAntialiasing</tabstop>
+  <tabstop>chkPanelUserCommands</tabstop>
+  <tabstop>chkPanelHeightmap</tabstop>
+  <tabstop>chkPanelJog</tabstop>
+  <tabstop>chkPanelSpindle</tabstop>
+  <tabstop>chkPanelOverriding</tabstop>
+  <tabstop>listCategories</tabstop>
  </tabstops>
  <resources>
   <include location="images.qrc"/>

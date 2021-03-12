@@ -420,16 +420,6 @@ void frmSettings::setUnits(int units)
     ui->cboUnits->setCurrentIndex(units);
 }
 
-QString frmSettings::touchCommand()
-{
-    return ui->txtTouchCommand->text();
-}
-
-void frmSettings::setTouchCommand(QString touchCommand)
-{
-    ui->txtTouchCommand->setText(touchCommand);
-}
-
 bool frmSettings::simplify()
 {
     return ui->chkSimplify->isChecked();
@@ -638,7 +628,6 @@ void frmSettings::on_cmdDefaults_clicked()
     setSpindleSpeedMax(10000);
     setLaserPowerMin(0);
     setLaserPowerMax(100);
-    setTouchCommand("G21G91G38.2Z-30F100; G0Z1; G38.2Z-2F10");
     setSafePositionCommand("G21G90; G53G0Z0");
     setMoveOnRestore(false);
     setRestoreMode(0);
@@ -671,7 +660,15 @@ void frmSettings::on_cmdDefaults_clicked()
     setPanelOverriding(true);
     setPanelHeightmap(true);
     setPanelJog(true);
-    setPanelSpindle(true);   
+    setPanelSpindle(true);
+
+    // Probing
+    setToolProbePositionX(0.0);
+    setToolProbePositionY(0.0);
+    setToolProbePositionZ(-50.0);
+    setToolProbeSeek(500.0);
+    setToolProbeFeed(50.0);
+    setToolProbeThrow(10.0);
 
     ui->clpTool->setColor(QColor(255, 153, 0));
 
@@ -715,4 +712,52 @@ void frmSettings::on_radGrayscaleS_toggled(bool checked)
 void frmSettings::on_radGrayscaleZ_toggled(bool checked)
 {
     ui->radGrayscaleS->setChecked(!checked);
+}
+
+void frmSettings::setToolProbePositionX(double val) {
+    ui->txtToolProbePositionX->setValue(val);
+}
+
+double frmSettings::toolProbePositionX() {
+    return ui->txtToolProbePositionX->value();
+}
+
+void frmSettings::setToolProbePositionY(double val) {
+    ui->txtToolProbePositionY->setValue(val);
+}
+
+double frmSettings::toolProbePositionY() {
+    return ui->txtToolProbePositionY->value();
+}
+
+void frmSettings::setToolProbePositionZ(double val) {
+    ui->txtToolProbePositionZ->setValue(val);
+}
+
+double frmSettings::toolProbePositionZ() {
+    return ui->txtToolProbePositionZ->value();
+}
+
+void frmSettings::setToolProbeSeek(double val) {
+    ui->txtToolProbeSeek->setValue(val);
+}
+
+double frmSettings::toolProbeSeek() {
+    return ui->txtToolProbeSeek->value();
+}
+
+void frmSettings::setToolProbeFeed(double val) {
+    ui->txtToolProbeFeed->setValue(val);
+}
+
+double frmSettings::toolProbeFeed() {
+    return ui->txtToolProbeFeed->value();
+}
+
+void frmSettings::setToolProbeThrow(double val) {
+    ui->txtToolProbeThrow->setValue(val);
+}
+
+double frmSettings::toolProbeThrow() {
+    return ui->txtToolProbeThrow->value();
 }
