@@ -18,7 +18,7 @@
 	font-size: 9pt;
 }*/
 
-QSpinBox, QDoubleSpinBox {
+NumberBox {
 	padding-top: 1px;
 	padding-bottom: 1px;
 }
@@ -203,7 +203,7 @@ QGroupBox {
             <item>
              <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1,0,0,1">
               <item row="2" column="1">
-               <widget class="QSpinBox" name="txtSpindleSpeedMin">
+               <widget class="NumberBox" name="txtSpindleSpeedMin">
                 <property name="font">
                  <font>
                   <pointsize>9</pointsize>
@@ -228,7 +228,7 @@ QGroupBox {
                </widget>
               </item>
               <item row="0" column="1">
-               <widget class="QSpinBox" name="txtQueryStateTime">
+               <widget class="NumberBox" name="txtQueryStateTime">
                 <property name="font">
                  <font>
                   <pointsize>9</pointsize>
@@ -296,7 +296,7 @@ QGroupBox {
                </widget>
               </item>
               <item row="1" column="1">
-               <widget class="QSpinBox" name="txtRapidSpeed">
+               <widget class="NumberBox" name="txtRapidSpeed">
                 <property name="font">
                  <font>
                   <pointsize>9</pointsize>
@@ -321,7 +321,7 @@ QGroupBox {
                </widget>
               </item>
               <item row="1" column="4">
-               <widget class="QSpinBox" name="txtAcceleration">
+               <widget class="NumberBox" name="txtAcceleration">
                 <property name="font">
                  <font>
                   <pointsize>9</pointsize>
@@ -353,7 +353,7 @@ QGroupBox {
                </widget>
               </item>
               <item row="2" column="4">
-               <widget class="QSpinBox" name="txtSpindleSpeedMax">
+               <widget class="NumberBox" name="txtSpindleSpeedMax">
                 <property name="font">
                  <font>
                   <pointsize>9</pointsize>
@@ -378,7 +378,7 @@ QGroupBox {
                </widget>
               </item>
               <item row="3" column="1">
-               <widget class="QSpinBox" name="txtLaserPowerMin">
+               <widget class="NumberBox" name="txtLaserPowerMin">
                 <property name="font">
                  <font>
                   <pointsize>9</pointsize>
@@ -403,7 +403,7 @@ QGroupBox {
                </widget>
               </item>
               <item row="3" column="4">
-               <widget class="QSpinBox" name="txtLaserPowerMax">
+               <widget class="NumberBox" name="txtLaserPowerMax">
                 <property name="font">
                  <font>
                   <pointsize>9</pointsize>
@@ -664,7 +664,7 @@ QGroupBox {
                </spacer>
               </item>
               <item row="3" column="2">
-               <widget class="QSpinBox" name="txtHeightMapProbingFeed">
+               <widget class="NumberBox" name="txtHeightMapProbingFeed">
                 <property name="font">
                  <font>
                   <pointsize>9</pointsize>
@@ -745,7 +745,7 @@ QGroupBox {
                </spacer>
               </item>
               <item row="0" column="1">
-               <widget class="QDoubleSpinBox" name="txtArcLength">
+               <widget class="NumberBox" name="txtArcLength">
                 <property name="enabled">
                  <bool>true</bool>
                 </property>
@@ -771,7 +771,7 @@ QGroupBox {
                </widget>
               </item>
               <item row="0" column="4">
-               <widget class="QDoubleSpinBox" name="txtArcDegree">
+               <widget class="NumberBox" name="txtArcDegree">
                 <property name="enabled">
                  <bool>false</bool>
                 </property>
@@ -829,7 +829,7 @@ QGroupBox {
                  </widget>
                 </item>
                 <item>
-                 <widget class="QDoubleSpinBox" name="txtLineWidth">
+                 <widget class="NumberBox" name="txtLineWidth">
                   <property name="alignment">
                    <set>Qt::AlignCenter</set>
                   </property>
@@ -962,7 +962,7 @@ QGroupBox {
                </widget>
               </item>
               <item row="3" column="4">
-               <widget class="QDoubleSpinBox" name="txtSimplifyPrecision">
+               <widget class="NumberBox" name="txtSimplifyPrecision">
                 <property name="enabled">
                  <bool>false</bool>
                 </property>
@@ -1090,7 +1090,7 @@ QGroupBox {
              </spacer>
             </item>
             <item row="1" column="1">
-             <widget class="QDoubleSpinBox" name="txtToolDiameter">
+             <widget class="NumberBox" name="txtToolDiameter">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                 <horstretch>0</horstretch>
@@ -1112,7 +1112,7 @@ QGroupBox {
              </widget>
             </item>
             <item row="1" column="5">
-             <widget class="QDoubleSpinBox" name="txtToolLength">
+             <widget class="NumberBox" name="txtToolLength">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                 <horstretch>0</horstretch>
@@ -1134,7 +1134,7 @@ QGroupBox {
              </widget>
             </item>
             <item row="0" column="5">
-             <widget class="QDoubleSpinBox" name="txtToolAngle">
+             <widget class="NumberBox" name="txtToolAngle">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                 <horstretch>0</horstretch>
@@ -1546,6 +1546,12 @@ QGroupBox {
    <class>GroupBox</class>
    <extends>QGroupBox</extends>
    <header location="global">widgets/groupbox.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>NumberBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header location="global">widgets/numberbox.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
