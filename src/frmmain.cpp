@@ -878,7 +878,7 @@ void frmMain::onSerialPortReadyRead()
             int status = -1;
 
             m_statusReceived = true;
-
+            m_statusReceivedId++;
             // Update machine coordinates
             static QRegExp mpx("MPos:([^,]*),([^,]*),([^,^>^|]*)");
             if (mpx.indexIn(data) != -1) {
@@ -1045,9 +1045,9 @@ void frmMain::onSerialPortReadyRead()
                     }
                     if (!drawnLines.isEmpty()) m_currentDrawer->update(drawnLines);
                 } else if (m_lastDrawnLineIndex < list.count()) {
-                    qDebug() << "tool missed:" << list.at(m_lastDrawnLineIndex)->getLineNumber()
-                             << m_currentModel->data(m_currentModel->index(m_fileProcessedCommandIndex, 4)).toInt()
-                             << m_fileProcessedCommandIndex;
+                    // qDebug() << "[render] tool missed:" << list.at(m_lastDrawnLineIndex)->getLineNumber()
+                    //          << m_currentModel->data(m_currentModel->index(m_fileProcessedCommandIndex, 4)).toInt()
+                    //          << m_fileProcessedCommandIndex;
                 }
             }
 
@@ -2041,18 +2041,151 @@ void frmMain::restoreOffsets()
                                        .arg(toMetric(ui->txtWPosZ->text().toDouble())), -1, m_settings->showUICommands());
 }
 
+bool frmMain::toolChangeReadyToContinue() {
+    if (m_toolChangeTargetStatusId > m_statusReceivedId) {
+        qDebug("ToolChange: waiting for status updates (%llu)", m_toolChangeTargetStatusId - m_statusReceivedId);
+        return false;
+    }
+
+    if (m_queue.length()) {
+        m_toolChangeTargetStatusId = m_statusReceivedId + 2;
+        qDebug("ToolChange: waiting for queue to drain (%llu)", m_queue.length());
+        return false;
+    }
+
+    if (m_lastGrblStatus != IDLE) {
+        qDebug() << "ToolChange: waiting for machine to go idle";
+        return false;
+    }
+    return true;
+}
+
 void frmMain::sendNextFileCommands() {
     if (m_queue.length() > 0) return;
 
     QString command = feedOverride(m_currentModel->data(m_currentModel->index(m_fileCommandIndex, 1)).toString());
 
-    while ((bufferLength() + command.length() + 1) <= BUFFERLENGTH
-           && m_fileCommandIndex < m_currentModel->rowCount() - 1
-           && !(!m_commands.isEmpty() && m_commands.last().command.contains(QRegExp("M0*2|M30")))) {
+    while (
+        (bufferLength() + command.length() + 1) <= BUFFERLENGTH
+        && m_fileCommandIndex < m_currentModel->rowCount() - 1
+        && !(!m_commands.isEmpty() && m_commands.last().command.contains(QRegExp("M0*2|M30")))
+    ) {
+        switch (m_toolChanging) {
+            // wait for the queue to drain and save off the X,Y
+            case ToolChangeState::BEGIN: {
+                qDebug() << "ToolChange: BEGIN";
+                if (!toolChangeReadyToContinue()) {
+                    return;
+                }
+
+                m_toolChangeReturnPosition = QVector3D(
+                    ui->txtWPosX->text().toDouble(),
+                    ui->txtWPosY->text().toDouble(),
+                    ui->txtWPosZ->text().toDouble()
+                );
+
+                m_toolChangeReturnParserStatus = m_storedParserStatus;
+
+                // Turn the spindle off
+                sendCommand("M05M09", -1, true);
+                // Move the machine to a safe position for tool changes
+                sendCommand("G53 Z0 F1000", -1, true);
+                // TODO: make this configurable
+                sendCommand("G53 X0 Y-20 F1000", -1, true);
+                sendCommand("G4 P0", -1, true);
+
+                m_toolChangeTargetStatusId = m_statusReceivedId + 2;
+                m_toolChanging = ToolChangeState::CHANGING;
+                return;
+            }
+
+            case ToolChangeState::CHANGING: {
+                qDebug() << "ToolChange: CHANGING";
+                if (!toolChangeReadyToContinue()) {
+                    return;
+                }
+                on_cmdFilePause_clicked(true);
+                QMessageBox box(this);
+                box.setIcon(QMessageBox::Information);
+                box.setText(tr("Change the tool:\n") + command);
+                box.setWindowTitle(qApp->applicationDisplayName());
+                box.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+                int res = box.exec();
+                if (res == QMessageBox::Cancel) {
+                    m_toolChanging = ToolChangeState::NONE;
+                } else if (res == QMessageBox::Ok) {
+                    on_cmdFilePause_clicked(false);
+                    m_toolChanging = ToolChangeState::PROBE;
+                }
+                return;
+            }
+
+            case ToolChangeState::PROBE: {
+                qDebug() << "ToolChange: PROBE";
+                on_cmdTouch_clicked();
+                m_toolChangeTargetStatusId = m_statusReceivedId + 2;
+                m_toolChanging = ToolChangeState::FINISH;
+                return;
+            }
+
+            case ToolChangeState::FINISH: {
+                qDebug() << "ToolChange: FINISH";
+                if (!toolChangeReadyToContinue()) {
+                    return;
+                }
+
+                // Ensure we are at a safe z
+                sendCommand("G53Z0F1000", -1, true);
+
+                // Move back to the stored X/Y
+                sendCommand(
+                    QString("G0 X%1 Y%2 F1000").arg(
+                        QString::number(m_toolChangeReturnPosition[0]),
+                        QString::number(m_toolChangeReturnPosition[1])
+                    ),
+                    -1,
+                    true
+                );
+
+                // Move to the new
+                sendCommand(
+                    QString("G0 Z%1 F1000").arg(
+                        QString::number(m_toolChangeReturnPosition[2])
+                    ),
+                    -1,
+                    true
+                );
+
+                // Restore the parser state to before we started the toolchange
+                sendCommand(m_toolChangeReturnParserStatus, -1, true);
+
+                // Pause for a couple seconds to let the spindle spool up
+                sendCommand("G4P2", -1, true);
+
+                m_currentModel->setData(m_currentModel->index(m_fileCommandIndex, 2), GCodeItem::Processed);
+                m_toolChanging = ToolChangeState::NONE;
+                m_fileCommandIndex++;
+                command = feedOverride(m_currentModel->data(m_currentModel->index(m_fileCommandIndex, 1)).toString());
+                return;
+            }
+
+            case ToolChangeState::NONE: {
+                if (command.contains(QRegExp("^T[0-9]+"))) {
+                    m_toolChanging = ToolChangeState::BEGIN;
+                    m_toolChangeTargetStatusId = m_statusReceivedId + 2;
+                    return;
+                }
+                break;
+            }
+
+        }
+
+
         m_currentModel->setData(m_currentModel->index(m_fileCommandIndex, 2), GCodeItem::Sent);
         sendCommand(command, m_fileCommandIndex, m_settings->showProgramCommands());
         m_fileCommandIndex++;
         command = feedOverride(m_currentModel->data(m_currentModel->index(m_fileCommandIndex, 1)).toString());
+
     }
 }
 

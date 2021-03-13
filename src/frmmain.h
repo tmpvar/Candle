@@ -62,6 +62,14 @@ struct CommandQueue {
     bool showInConsole;
 };
 
+enum ToolChangeState {
+    NONE,       // not tool changing
+    BEGIN,      // flush the queue so we can store a valid return position
+    CHANGING,   // move to safe location for manual tool change
+    PROBE,      // probe the tool height and store it in a WCS
+    FINISH      // return to (storedX, storedY, safeZ)
+};
+
 class CancelException : public std::exception {
 public:
 #ifdef Q_OS_MAC
@@ -165,7 +173,7 @@ private slots:
     void on_cmdHeightMapCreate_clicked();
     void on_cmdHeightMapBorderAuto_clicked();
     void on_cmdFileAbort_clicked();
-    void on_cmdSpindle_clicked(bool checked);   
+    void on_cmdSpindle_clicked(bool checked);
 
     void on_cmdYPlus_pressed();
 
@@ -211,7 +219,7 @@ private:
 
     OriginDrawer *m_originDrawer;
 
-    GcodeDrawer *m_codeDrawer;    
+    GcodeDrawer *m_codeDrawer;
     GcodeDrawer *m_probeDrawer;
     GcodeDrawer *m_currentDrawer;
 
@@ -270,6 +278,11 @@ private:
     double m_storedY = 0;
     double m_storedZ = 0;
     QString m_storedParserStatus;
+    QVector3D m_toolChangeReturnPosition;
+    QString m_toolChangeReturnParserStatus;
+
+    ToolChangeState m_toolChanging = ToolChangeState::NONE;
+    uint64_t m_toolChangeTargetStatusId = 0;
 
     // Console window
     int m_storedConsoleMinimumHeight;
@@ -288,6 +301,7 @@ private:
     bool m_resetCompleted = true;
     bool m_aborting = false;
     bool m_statusReceived = false;
+    uint64_t m_statusReceivedId = 0;
 
     bool m_processingFile = false;
     bool m_transferCompleted = false;
@@ -377,6 +391,7 @@ private:
     void updateOverride(SliderBox *slider, int value, char command);
     void jogStep();
     void updateJogTitle();
+    bool toolChangeReadyToContinue();
 };
 
 #endif // FRMMAIN_H
