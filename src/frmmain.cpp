@@ -387,6 +387,7 @@ void frmMain::loadSettings()
     m_settings->setToolProbeSeek(set.value("toolProbeSeek", 0.0).toDouble());
     m_settings->setToolProbeFeed(set.value("toolProbeFeed", 0.0).toDouble());
     m_settings->setToolProbeThrow(set.value("toolProbeThrow", 0.0).toDouble());
+    m_settings->setToolProbeOffsetZ(set.value("toolProbeOffsetZ", 0.0).toDouble());
 
 
     ui->grpConsole->setMinimumHeight(set.value("consoleMinHeight", 100).toInt());
@@ -612,6 +613,7 @@ void frmMain::saveSettings()
     set.setValue("toolProbeSeek", m_settings->toolProbeSeek());
     set.setValue("toolProbeFeed", m_settings->toolProbeFeed());
     set.setValue("toolProbeThrow", m_settings->toolProbeThrow());
+    set.setValue("toolProbeOffsetZ", m_settings->toolProbeOffsetZ());
 
 }
 
@@ -2423,7 +2425,13 @@ void frmMain::on_cmdTouch_clicked()
             -1,
             m_settings->showUICommands()
         );
-        sendCommand("G10L20P1Z0", -1, m_settings->showUICommands());
+        sendCommand(
+            QString("G10 L20 P1 Z%1").arg(
+                QString::number(m_settings->toolProbeOffsetZ())
+            ),
+            -1,
+            m_settings->showUICommands()
+        );
         sendCommand("G90", -1, m_settings->showUICommands());
         sendCommand("G53G1Z0F1000", -1, m_settings->showUICommands());
 

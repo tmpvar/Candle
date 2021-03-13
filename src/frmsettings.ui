@@ -73,7 +73,7 @@ QGroupBox {
           <x>0</x>
           <y>0</y>
           <width>397</width>
-          <height>1682</height>
+          <height>1757</height>
          </rect>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -430,7 +430,7 @@ QGroupBox {
            <property name="minimumSize">
             <size>
              <width>108</width>
-             <height>139</height>
+             <height>161</height>
             </size>
            </property>
            <property name="title">
@@ -442,7 +442,7 @@ QGroupBox {
               <x>10</x>
               <y>20</y>
               <width>361</width>
-              <height>111</height>
+              <height>141</height>
              </rect>
             </property>
             <layout class="QGridLayout" name="gridLayout_11">
@@ -492,6 +492,22 @@ QGroupBox {
                </property>
               </widget>
              </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_41">
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;How far in {machine-units} do we need to move away from the switch to deactivate it?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="text">
+                <string>Probe throw</string>
+               </property>
+              </widget>
+             </item>
              <item row="3" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_9">
                <item>
@@ -501,6 +517,9 @@ QGroupBox {
                  </property>
                  <property name="buttonSymbols">
                   <enum>QAbstractSpinBox::NoButtons</enum>
+                 </property>
+                 <property name="maximum">
+                  <double>100.000000000000000</double>
                  </property>
                  <property name="value">
                   <double>10.000000000000000</double>
@@ -629,19 +648,42 @@ QGroupBox {
                </property>
               </widget>
              </item>
-             <item row="3" column="0">
-              <widget class="QLabel" name="label_41">
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>20</height>
-                </size>
-               </property>
+             <item row="4" column="0">
+              <layout class="QHBoxLayout" name="horizontalLayout_14">
+               <item>
+                <widget class="QLabel" name="label_45">
+                 <property name="maximumSize">
+                  <size>
+                   <width>16777215</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                 <property name="toolTip">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Offset of the probe from the top of the table, in {machine units}&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                 <property name="text">
+                  <string>Probe offset Z</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="4" column="1">
+              <widget class="NumberBox" name="txtToolProbeOffsetZ">
                <property name="toolTip">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;How far in {machine-units} do we need to move away from the switch to deactivate it?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;position in X, in machine coordinates&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>
-               <property name="text">
-                <string>Probe throw</string>
+               <property name="buttonSymbols">
+                <enum>QAbstractSpinBox::NoButtons</enum>
+               </property>
+               <property name="minimum">
+                <double>-1000.000000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>1000.000000000000000</double>
+               </property>
+               <property name="value">
+                <double>0.000000000000000</double>
                </property>
               </widget>
              </item>

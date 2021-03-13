@@ -669,6 +669,7 @@ void frmSettings::on_cmdDefaults_clicked()
     setToolProbeSeek(500.0);
     setToolProbeFeed(50.0);
     setToolProbeThrow(10.0);
+    setToolProbeOffsetZ(0.0);
 
     ui->clpTool->setColor(QColor(255, 153, 0));
 
@@ -760,4 +761,12 @@ void frmSettings::setToolProbeThrow(double val) {
 
 double frmSettings::toolProbeThrow() {
     return ui->txtToolProbeThrow->value();
+}
+
+void frmSettings::setToolProbeOffsetZ(double val) {
+    ui->txtToolProbeOffsetZ->setValue(val);
+}
+
+double frmSettings::toolProbeOffsetZ() {
+    return ui->txtToolProbeOffsetZ->value();
 }

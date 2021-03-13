@@ -137,6 +137,9 @@ public:
     void setToolProbeThrow(double val);
     double toolProbeThrow();
 
+    void setToolProbeOffsetZ(double val);
+    double toolProbeOffsetZ();
+
 protected:
     void showEvent(QShowEvent *se);
 
