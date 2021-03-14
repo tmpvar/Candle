@@ -1752,6 +1752,7 @@ void frmMain::loadFile(QList<QString> data)
         progress.setStyleSheet("QProgressBar {text-align: center; qproperty-format: \"\"}");
     }
 
+    m_toolList.clear();
     while (!data.isEmpty())
     {
         command = data.takeFirst();
@@ -1763,6 +1764,22 @@ void frmMain::loadFile(QList<QString> data)
             // Split command
             stripped = GcodePreprocessorUtils::removeComment(command);
             args = GcodePreprocessorUtils::splitCommand(stripped);
+
+            QString comment = GcodePreprocessorUtils::parseComment(command);
+            if (comment.length()) {
+                // QRegExp toolRe("^\\(\\W*T([0-9]+).+D=([\\d\\.]+).+CR=([\\d\\.]+.+ZMIN=([\\d\\.]+) - ([^\\)]+)\\)$");
+                QRegExp toolRe("^\\(\\W*T([0-9]+).+D=([\\d\\.]+).+CR=([\\d\\.]+).+ZMIN=([\\d\\.]+) - ([^\\)]+)\\)$");
+                if (toolRe.indexIn(comment) != -1) {
+                    ToolListEntry entry = {
+                        .index = toolRe.cap(1).toInt(),
+                        .diameter = toolRe.cap(2).toDouble(),
+                        .cornerRadius = toolRe.cap(3).toDouble(),
+                        .zMin = toolRe.cap(4).toDouble(),
+                        .description = toolRe.cap(5),
+                    };
+                    m_toolList[entry.index] = entry;
+                }
+            }
 
 //            PointSegment *ps = gp.addCommand(args);
             gp.addCommand(args);
@@ -2133,7 +2150,17 @@ void frmMain::sendNextFileCommands() {
                 on_cmdFilePause_clicked(true);
                 QMessageBox box(this);
                 box.setIcon(QMessageBox::Information);
-                box.setText(tr("Change the tool:\n") + command);
+
+                ToolListEntry entry = m_toolList[m_toolChangeTarget];
+
+                box.setText(
+                    tr("Change the tool:\n")
+                    + "Index: " + QString::number(entry.index) + "\n"
+                    + "Diameter: " + QString::number(entry.diameter) + "mm\n"
+                    + "Corner Radius: " + QString::number(entry.cornerRadius) + "mm\n"
+                    + "Z Min: " + QString::number(entry.zMin) + "mm\n"
+                    + "Description: " + entry.description + "\n"
+                );
                 box.setWindowTitle(qApp->applicationDisplayName());
                 box.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
                 int res = box.exec();
@@ -2179,7 +2206,9 @@ void frmMain::sendNextFileCommands() {
             }
 
             case ToolChangeState::NONE: {
-                if (command.contains(QRegExp("^T\\d+$"))) {
+                QRegExp toolRe("^T(\\d+)");
+                if (toolRe.indexIn(command) != -1) {
+                    m_toolChangeTarget = toolRe.cap(1).toInt();
                     m_toolChanging = ToolChangeState::BEGIN;
                     return;
                 }
@@ -3934,7 +3963,7 @@ void frmMain::on_chkHeightMapUse_clicked(bool checked)
         // Select first row
         ui->tblProgram->selectRow(0);
     }
-    catch (CancelException) {                       // Cancel modification
+    catch (CancelException &) {                       // Cancel modification
         m_programHeightmapModel.clear();
         m_currentModel = &m_programModel;
 
@@ -4047,7 +4076,7 @@ bool frmMain::compareCoordinates(double x, double y, double z)
     return ui->txtMPosX->text().toDouble() == x && ui->txtMPosY->text().toDouble() == y && ui->txtMPosZ->text().toDouble() == z;
 }
 
-void frmMain::onCmdUserClicked(bool checked)
+void frmMain::onCmdUserClicked(bool)
 {
     int i = sender()->objectName().right(1).toInt();
 
@@ -4058,8 +4087,9 @@ void frmMain::onCmdUserClicked(bool checked)
     }
 }
 
-void frmMain::onOverridingToggled(bool checked)
+void frmMain::onOverridingToggled(bool)
 {
+
     ui->grpOverriding->setProperty("overrided", ui->slbFeedOverride->isChecked()
                                    || ui->slbRapidOverride->isChecked() || ui->slbSpindleOverride->isChecked());
     style()->unpolish(ui->grpOverriding);

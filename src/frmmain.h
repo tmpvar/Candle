@@ -13,6 +13,7 @@
 #include <QList>
 #include <QTime>
 #include <QMenu>
+#include <QHash>
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QProgressDialog>
@@ -60,6 +61,14 @@ struct CommandQueue {
     QString command;
     int tableIndex;
     bool showInConsole;
+};
+
+struct ToolListEntry {
+    int index;
+    double diameter;
+    double cornerRadius;
+    double zMin;
+    QString description;
 };
 
 enum ToolChangeState {
@@ -280,9 +289,11 @@ private:
     QString m_storedParserStatus;
     QVector3D m_toolChangeReturnPosition;
     QString m_toolChangeReturnParserStatus;
+    int m_toolChangeTarget = -1;
 
     ToolChangeState m_toolChanging = ToolChangeState::NONE;
     uint64_t m_toolChangeTargetStatusId = 0;
+    QHash<int, ToolListEntry> m_toolList;
 
     // Console window
     int m_storedConsoleMinimumHeight;

@@ -17,6 +17,7 @@ class NumberBox : public QDoubleSpinBox {
             return QAbstractSpinBox::StepNone;
         }
         void stepBy(int steps) {
+            (void)steps;
             return;
         }
 };
