@@ -357,6 +357,7 @@ private:
     void updateControlsState();
     void openPort();
     void sendCommand(QString command, int tableIndex = -1, bool showInConsole = true);
+    bool dequeueCommand();
     void grblReset();
     int bufferLength();
     void sendNextFileCommands();

@@ -772,47 +772,36 @@ void frmMain::openPort()
         grblReset();
     }
 }
-
-void frmMain::sendCommand(QString command, int tableIndex, bool showInConsole)
-{
-    if (!m_serialPort.isOpen() || !m_resetCompleted) return;
-
-    command = command.toUpper();
-
-    // Commands queue
-    if ((bufferLength() + command.length() + 1) > BUFFERLENGTH) {
-//        qDebug() << "queue:" << command;
-
-        CommandQueue cq;
-
-        cq.command = command;
-        cq.tableIndex = tableIndex;
-        cq.showInConsole = showInConsole;
-
-        m_queue.append(cq);
-        return;
+bool frmMain::dequeueCommand() {
+    if (!m_serialPort.isOpen() || !m_resetCompleted) {
+        return false;
     }
 
+    CommandQueue cq = m_queue.first();
+
+    // Commands queue
+    if ((bufferLength() + cq.command.length() + 1) > BUFFERLENGTH) {
+        return false;
+    }
+    m_queue.removeFirst();
     CommandAttributes ca;
 
-//    if (!(command == "$G" && tableIndex < -1) && !(command == "$#" && tableIndex < -1)
-//            && (!m_transferringFile || (m_transferringFile && m_showAllCommands) || tableIndex < 0)) {
-    if (showInConsole) {
-        ui->txtConsole->appendPlainText(command);
+    if (cq.showInConsole) {
+        ui->txtConsole->appendPlainText(cq.command);
         ca.consoleIndex = ui->txtConsole->blockCount() - 1;
     } else {
         ca.consoleIndex = -1;
     }
 
-    ca.command = command;
-    ca.length = command.length() + 1;
-    ca.tableIndex = tableIndex;
+    ca.command = cq.command;
+    ca.length = cq.command.length() + 1;
+    ca.tableIndex = cq.tableIndex;
 
     m_commands.append(ca);
 
     // Processing spindle speed only from g-code program
     QRegExp s("[Ss]0*(\\d+)");
-    if (s.indexIn(command) != -1 && ca.tableIndex > -2) {
+    if (s.indexIn(cq.command) != -1 && ca.tableIndex > -2) {
         int speed = s.cap(1).toInt();
         if (ui->slbSpindle->value() != speed) {
             ui->slbSpindle->setValue(speed);
@@ -820,11 +809,26 @@ void frmMain::sendCommand(QString command, int tableIndex, bool showInConsole)
     }
 
     // Set M2 & M30 commands sent flag
-    if (command.contains(QRegExp("M0*2|M30"))) {
+    if (cq.command.contains(QRegExp("M0*2|M30"))) {
         m_fileEndSent = true;
     }
 
-    m_serialPort.write((command + "\r").toLatin1());
+    m_serialPort.write((cq.command + "\r").toLatin1());
+
+    return true;
+}
+
+void frmMain::sendCommand(QString command, int tableIndex, bool showInConsole)
+{
+    if (!m_serialPort.isOpen() || !m_resetCompleted) return;
+
+    command = command.toUpper();
+    CommandQueue cq;
+
+    cq.command = command;
+    cq.tableIndex = tableIndex;
+    cq.showInConsole = showInConsole;
+    m_queue.append(cq);
 }
 
 void frmMain::grblReset()
@@ -878,6 +882,13 @@ int frmMain::bufferLength()
 
 void frmMain::onSerialPortReadyRead()
 {
+    // Check queue
+    while (m_queue.length()) {
+        if (!dequeueCommand()) {
+            break;
+        }
+    }
+
     while (m_serialPort.canReadLine()) {
         QString data = m_serialPort.readLine().trimmed();
 
@@ -1134,7 +1145,6 @@ void frmMain::onSerialPortReadyRead()
             }
 
         } else if (data.length() > 0) {
-
             // Processed commands
             if (m_commands.length() > 0 && !dataIsFloating(data)
                     && !(m_commands[0].command != "[CTRL+X]" && dataIsReset(data))) {
@@ -1270,15 +1280,6 @@ void frmMain::onSerialPortReadyRead()
                         tc.endEditBlock();
 
                         if (scrolledDown) ui->txtConsole->verticalScrollBar()->setValue(ui->txtConsole->verticalScrollBar()->maximum());
-                    }
-
-                    // Check queue
-                    if (m_queue.length() > 0) {
-                        CommandQueue cq = m_queue.takeFirst();
-                        while ((bufferLength() + cq.command.length() + 1) <= BUFFERLENGTH) {
-                            sendCommand(cq.command, cq.tableIndex, cq.showInConsole);
-                            if (m_queue.isEmpty()) break; else cq = m_queue.takeFirst();
-                        }
                     }
 
                     // Add response to table, send next program commands
