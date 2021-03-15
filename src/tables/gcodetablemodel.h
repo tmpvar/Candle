@@ -15,6 +15,7 @@ struct GCodeItem
     char state;
     QString response;
     int line;
+    int tool;
     QStringList args;
 };
 

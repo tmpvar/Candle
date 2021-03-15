@@ -1772,6 +1772,7 @@ void frmMain::loadFile(QList<QString> data)
     }
 
     m_toolList.clear();
+    int tool = 0;
     while (!data.isEmpty())
     {
         command = data.takeFirst();
@@ -1787,28 +1788,34 @@ void frmMain::loadFile(QList<QString> data)
             QString comment = GcodePreprocessorUtils::parseComment(command);
             if (comment.length()) {
                 // QRegExp toolRe("^\\(\\W*T([0-9]+).+D=([\\d\\.]+).+CR=([\\d\\.]+.+ZMIN=([\\d\\.]+) - ([^\\)]+)\\)$");
-                QRegExp toolRe("^\\(\\W*T([0-9]+).+D=([\\d\\.]+).+CR=([\\d\\.]+).+ZMIN=([\\d\\.]+) - ([^\\)]+)\\)$");
-                if (toolRe.indexIn(comment) != -1) {
+                QRegExp toolCommentRe("^\\(\\W*T([0-9]+).+D=([\\d\\.]+).+CR=([\\d\\.]+).+ZMIN=([\\d\\.]+) - ([^\\)]+)\\)$");
+                if (toolCommentRe.indexIn(comment) != -1) {
                     ToolListEntry entry = {
-                        .index = toolRe.cap(1).toInt(),
-                        .diameter = toolRe.cap(2).toDouble(),
-                        .cornerRadius = toolRe.cap(3).toDouble(),
-                        .zMin = toolRe.cap(4).toDouble(),
-                        .description = toolRe.cap(5),
+                        .index = toolCommentRe.cap(1).toInt(),
+                        .diameter = toolCommentRe.cap(2).toDouble(),
+                        .cornerRadius = toolCommentRe.cap(3).toDouble(),
+                        .zMin = toolCommentRe.cap(4).toDouble(),
+                        .description = toolCommentRe.cap(5),
                     };
                     m_toolList[entry.index] = entry;
                 }
-            }
+            } else {
+                QRegExp toolRe("^T([0-9]+)");
+                if (toolRe.indexIn(trimmed) != -1) {
+                    tool = toolRe.cap(1).toInt();
 
+                }
+            }
 //            PointSegment *ps = gp.addCommand(args);
             gp.addCommand(args);
 
     //        if (ps && (qIsNaN(ps->point()->x()) || qIsNaN(ps->point()->y()) || qIsNaN(ps->point()->z())))
     //                   qDebug() << "nan point segment added:" << *ps->point();
-
+            qDebug() << trimmed << "tool:" << QString::number(tool);
             item.command = trimmed;
             item.state = GCodeItem::InQueue;
             item.line = gp.getCommandNumber();
+            item.tool = tool;
             item.args = args;
 
             m_programModel.data().append(item);
@@ -1970,34 +1977,51 @@ void frmMain::onActSendFromLineTriggered()
         QVector<QList<int>> lineIndexes = parser->getLinesIndexes();
 
         int lineNumber = m_currentModel->data(m_currentModel->index(commandIndex, 4)).toInt();
+        if (lineIndexes.at(lineNumber).isEmpty()) {
+            return;
+        }
+
         LineSegment* firstSegment = list.at(lineIndexes.at(lineNumber).first());
         LineSegment* lastSegment = list.at(lineIndexes.at(lineNumber).last());
         LineSegment* feedSegment = lastSegment;
         int segmentIndex = list.indexOf(feedSegment);
         while (feedSegment->isFastTraverse() && segmentIndex > 0) feedSegment = list.at(--segmentIndex);
 
-        QStringList commands;
+        m_toolChangePostCommands.clear();
 
-        commands.append(QString("G90 G53 G0 Z0 F1000"));
-        commands.append(QString("M3 S%1").arg(qMax<double>(lastSegment->getSpindleSpeed(), ui->slbSpindle->value())));
-        commands.append(QString("G04 P2"));
+        int targetTool = -1;
+        if (m_currentModel->data().length() > commandIndex) {
+            auto item = m_currentModel->data().at(commandIndex);
+            targetTool = item.tool;
+        }
 
-        commands.append(QString("G21 G90 G0 X%1 Y%2")
+        m_toolChangePostCommands.append(QString("G90 G53 G0 Z0 F1000"));
+        m_toolChangePostCommands.append(QString("M3 S%1").arg(qMax<double>(lastSegment->getSpindleSpeed(), ui->slbSpindle->value())));
+        m_toolChangePostCommands.append(QString("M04 P2"));
+
+        m_toolChangePostCommands.append(QString("G21 G90 G0 X%1 Y%2")
                         .arg(firstSegment->getStart().x())
                         .arg(firstSegment->getStart().y()));
-        commands.append(QString("G1 Z%1 F%2")
+        m_toolChangePostCommands.append(QString("G1 Z%1 F%2")
                         .arg(firstSegment->getStart().z())
                         .arg(feedSegment->getSpeed()));
 
-        commands.append(QString("%1 %2 %3 F%4")
+        m_toolChangePostCommands.append(QString("%1 %2 %3 F%4")
                         .arg(lastSegment->isMetric() ? "G21" : "G20")
                         .arg(lastSegment->isAbsolute() ? "G90" : "G91")
                         .arg(lastSegment->isFastTraverse() ? "G0" : "G1")
                         .arg(lastSegment->isMetric() ? feedSegment->getSpeed() : feedSegment->getSpeed() / 25.4));
 
+
+
         if (lastSegment->isArc()) {
-            commands.append(lastSegment->plane() == PointSegment::XY ? "G17"
+            m_toolChangePostCommands.append(lastSegment->plane() == PointSegment::XY ? "G17"
             : lastSegment->plane() == PointSegment::ZX ? "G18" : "G19");
+        }
+
+        QStringList commands = m_toolChangePostCommands;
+        if (targetTool > -1) {
+            commands.prepend(QString("T%1").arg(targetTool));
         }
 
         QMessageBox box(this);
@@ -2010,7 +2034,9 @@ void frmMain::onActSendFromLineTriggered()
         int res = box.exec();
         if (res == QMessageBox::Cancel) return;
         else if (res == QMessageBox::Ok) {
-            foreach (QString command, commands) {
+            sendCommand(QString("T%1").arg(targetTool), -1, m_settings->showUICommands());
+        } else {
+            foreach (QString command, m_toolChangePostCommands) {
                 sendCommand(command, -1, m_settings->showUICommands());
             }
         }
@@ -2218,13 +2244,25 @@ bool frmMain::toolChangeProcess() {
             // Restore the parser state to before we started the toolchange
             sendCommand(m_toolChangeReturnParserStatus, -1, true);
 
-            // Pause for a couple seconds to let the spindle spool up
-            sendCommand("G4P2", -1, true);
-
-            m_currentModel->setData(m_currentModel->index(m_fileCommandIndex, 2), GCodeItem::Processed);
+            // m_currentModel->setData(m_currentModel->index(m_fileCommandIndex, 2), GCodeItem::Processed);
             m_toolChangeStatePrev = m_toolChangeState;
             m_toolChangeState = ToolChangeState::NONE;
-            m_fileCommandIndex++;
+            // m_fileCommandIndex++;
+            bool did_pause = false;
+            foreach (QString command, m_toolChangePostCommands) {
+                QRegExp pauseRe("^P0?4");
+                if (pauseRe.indexIn(command) > -1) {
+                    did_pause = true;
+                }
+                sendCommand(command, -1, m_settings->showUICommands());
+            }
+
+            m_toolChangePostCommands.clear();
+
+            if (!did_pause) {
+                // Pause for a couple seconds to let the spindle spool up
+                sendCommand("G4P2", -1, true);
+            }
             return true;
         }
 

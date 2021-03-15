@@ -295,6 +295,7 @@ private:
     ToolChangeState m_toolChangeStatePrev = ToolChangeState::NONE;
     uint64_t m_toolChangeTargetStatusId = 0;
     QHash<int, ToolListEntry> m_toolList;
+    QStringList m_toolChangePostCommands;
 
     // Console window
     int m_storedConsoleMinimumHeight;
