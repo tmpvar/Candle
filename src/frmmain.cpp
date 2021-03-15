@@ -30,6 +30,14 @@ const char *grbl_status_strings[11] = {
     "JOG",
 };
 
+const char *ToolChangeStateStrings[] = {
+    "NONE",
+    "BEGIN",
+    "CHANGING",
+    "PROBE",
+    "FINISH"
+};
+
 #define PROGRESSMINLINES 10000
 #define PROGRESSSTEP     1000
 
@@ -777,6 +785,10 @@ bool frmMain::dequeueCommand() {
         return false;
     }
 
+    if (m_queue.isEmpty()) {
+        return false;
+    }
+
     CommandQueue cq = m_queue.first();
 
     // Commands queue
@@ -818,9 +830,11 @@ bool frmMain::dequeueCommand() {
     return true;
 }
 
-void frmMain::sendCommand(QString command, int tableIndex, bool showInConsole)
+bool frmMain::sendCommand(QString command, int tableIndex, bool showInConsole)
 {
-    if (!m_serialPort.isOpen() || !m_resetCompleted) return;
+    if (!m_serialPort.isOpen() || !m_resetCompleted) {
+        return false;
+    }
 
     command = command.toUpper();
     CommandQueue cq;
@@ -829,6 +843,10 @@ void frmMain::sendCommand(QString command, int tableIndex, bool showInConsole)
     cq.tableIndex = tableIndex;
     cq.showInConsole = showInConsole;
     m_queue.append(cq);
+    if (toolChangeProcess()) {
+        return false;
+    }
+    return true;
 }
 
 void frmMain::grblReset()
@@ -849,7 +867,7 @@ void frmMain::grblReset()
     m_lastGrblStatus = -1;
     m_statusReceived = true;
 
-    m_toolChanging = ToolChangeState::NONE;
+    m_toolChangeState = ToolChangeState::NONE;
     m_toolChangeTargetStatusId = 0;
     m_statusReceivedId = 0;
 
@@ -1023,7 +1041,7 @@ void frmMain::onSerialPortReadyRead()
                 }
 
                 // Attempt to make progress on toolchange
-                if (m_toolChanging != ToolChangeState::NONE) {
+                if (m_toolChangeState != ToolChangeState::NONE) {
                     sendNextFileCommands();
                 }
             }
@@ -1913,7 +1931,7 @@ void frmMain::on_cmdFileSend_clicked()
     m_fileEndSent = false;
 
     m_statusReceivedId = 0;
-    m_toolChanging = ToolChangeState::NONE;
+    m_toolChangeState = ToolChangeState::NONE;
     m_toolChangeTargetStatusId = 0;
 
     m_storedKeyboardControl = ui->chkKeyboardControl->isChecked();
@@ -2092,8 +2110,9 @@ bool frmMain::toolChangeReadyToContinue() {
         return false;
     }
 
-    if (m_queue.length()) {
+    if (m_queue.length() > 1) {
         m_toolChangeTargetStatusId = m_statusReceivedId + 2;
+        while(dequeueCommand()) {}
         return false;
     }
 
@@ -2101,6 +2120,127 @@ bool frmMain::toolChangeReadyToContinue() {
         return false;
     }
     return true;
+}
+
+bool frmMain::toolChangeProcess() {
+    if (m_queue.isEmpty()) {
+        return false;
+    }
+
+    // we're hung up on the same state for multiple cycles
+    if (m_toolChangeState != ToolChangeState::NONE && m_toolChangeStatePrev == m_toolChangeState) {
+        return true;
+    }
+
+    switch (m_toolChangeState) {
+        // wait for the queue to drain and save off the X,Y
+        case ToolChangeState::BEGIN: {
+            if (!toolChangeReadyToContinue()) {
+                return true;
+            }
+
+            qDebug() << "ToolChange: BEGIN";
+            m_toolChangeReturnPosition = QVector3D(
+                ui->txtWPosX->text().toDouble(),
+                ui->txtWPosY->text().toDouble(),
+                ui->txtWPosZ->text().toDouble()
+            );
+
+            m_toolChangeReturnParserStatus = m_storedParserStatus;
+
+            // Turn the spindle off
+            sendCommand("M05M09", -1, true);
+            // Move the machine to a safe position for tool changes
+            sendCommand("G53 Z0 F1000", -1, true);
+            // TODO: make this configurable
+            sendCommand("G53 X0 Y-20 F1000", -1, true);
+            sendCommand("G4 P0", -1, true);
+
+            m_toolChangeTargetStatusId = m_statusReceivedId + 2;
+            m_toolChangeStatePrev = m_toolChangeState;
+            m_toolChangeState = ToolChangeState::CHANGING;
+            return true;
+        }
+
+        case ToolChangeState::CHANGING: {
+            if (!toolChangeReadyToContinue()) {
+                return true;
+            }
+
+            m_toolChangeStatePrev = m_toolChangeState;
+            qDebug() << "ToolChange: CHANGING";
+            on_cmdFilePause_clicked(true);
+            QMessageBox box(this);
+            box.setIcon(QMessageBox::Information);
+
+            ToolListEntry entry = m_toolList[m_toolChangeTarget];
+
+            box.setText(
+                tr("Change the tool:\n")
+                + "Index: " + QString::number(entry.index) + "\n"
+                + "Diameter: " + QString::number(entry.diameter) + "mm\n"
+                + "Corner Radius: " + QString::number(entry.cornerRadius) + "mm\n"
+                + "Z Min: " + QString::number(entry.zMin) + "mm\n"
+                + "Description: " + entry.description + "\n"
+            );
+            box.setWindowTitle(qApp->applicationDisplayName());
+            box.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+            int res = box.exec();
+            if (res == QMessageBox::Cancel) {
+                m_toolChangeState = ToolChangeState::NONE;
+                qDebug() << "ToolChange: cancelled";
+                on_cmdFileAbort_clicked();
+            } else if (res == QMessageBox::Ok) {
+                on_cmdFilePause_clicked(false);
+                m_toolChangeState = ToolChangeState::PROBE;
+            }
+            return true;
+        }
+
+        case ToolChangeState::PROBE: {
+            m_toolChangeStatePrev = m_toolChangeState;
+            m_toolChangeState = ToolChangeState::FINISH;
+            qDebug() << "ToolChange: PROBE";
+            on_cmdTouch_clicked();
+            m_toolChangeTargetStatusId = m_statusReceivedId + 2;
+            return true;
+        }
+
+        case ToolChangeState::FINISH: {
+            if (!toolChangeReadyToContinue()) {
+                return true;
+            }
+            qDebug() << "ToolChange: FINISH";
+
+            // Ensure we are at a safe z
+            sendCommand("G53Z0F1000", -1, true);
+
+            // Restore the parser state to before we started the toolchange
+            sendCommand(m_toolChangeReturnParserStatus, -1, true);
+
+            // Pause for a couple seconds to let the spindle spool up
+            sendCommand("G4P2", -1, true);
+
+            m_currentModel->setData(m_currentModel->index(m_fileCommandIndex, 2), GCodeItem::Processed);
+            m_toolChangeStatePrev = m_toolChangeState;
+            m_toolChangeState = ToolChangeState::NONE;
+            m_fileCommandIndex++;
+            return true;
+        }
+
+        case ToolChangeState::NONE: {
+            CommandQueue cq = m_queue.last();
+            QRegExp toolRe("^T(\\d+)");
+            if (toolRe.indexIn(cq.command) != -1) {
+                m_toolChangeTarget = toolRe.cap(1).toInt();
+                m_toolChangeStatePrev = m_toolChangeState;
+                m_toolChangeState = ToolChangeState::BEGIN;
+                return true;
+            }
+            break;
+        }
+    }
+    return false;
 }
 
 void frmMain::sendNextFileCommands() {
@@ -2113,114 +2253,11 @@ void frmMain::sendNextFileCommands() {
         && m_fileCommandIndex < m_currentModel->rowCount() - 1
         && !(!m_commands.isEmpty() && m_commands.last().command.contains(QRegExp("M0*2|M30")))
     ) {
-        switch (m_toolChanging) {
-            // wait for the queue to drain and save off the X,Y
-            case ToolChangeState::BEGIN: {
-                if (!toolChangeReadyToContinue()) {
-                    return;
-                }
-                qDebug() << "ToolChange: BEGIN" << command;
-
-                m_toolChangeReturnPosition = QVector3D(
-                    ui->txtWPosX->text().toDouble(),
-                    ui->txtWPosY->text().toDouble(),
-                    ui->txtWPosZ->text().toDouble()
-                );
-
-                m_toolChangeReturnParserStatus = m_storedParserStatus;
-
-                // Turn the spindle off
-                sendCommand("M05M09", -1, true);
-                // Move the machine to a safe position for tool changes
-                sendCommand("G53 Z0 F1000", -1, true);
-                // TODO: make this configurable
-                sendCommand("G53 X0 Y-20 F1000", -1, true);
-                sendCommand("G4 P0", -1, true);
-
-                m_toolChangeTargetStatusId = m_statusReceivedId + 2;
-                m_toolChanging = ToolChangeState::CHANGING;
-                return;
-            }
-
-            case ToolChangeState::CHANGING: {
-                if (!toolChangeReadyToContinue()) {
-                    return;
-                }
-
-                qDebug() << "ToolChange: CHANGING";
-                on_cmdFilePause_clicked(true);
-                QMessageBox box(this);
-                box.setIcon(QMessageBox::Information);
-
-                ToolListEntry entry = m_toolList[m_toolChangeTarget];
-
-                box.setText(
-                    tr("Change the tool:\n")
-                    + "Index: " + QString::number(entry.index) + "\n"
-                    + "Diameter: " + QString::number(entry.diameter) + "mm\n"
-                    + "Corner Radius: " + QString::number(entry.cornerRadius) + "mm\n"
-                    + "Z Min: " + QString::number(entry.zMin) + "mm\n"
-                    + "Description: " + entry.description + "\n"
-                );
-                box.setWindowTitle(qApp->applicationDisplayName());
-                box.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
-                int res = box.exec();
-                if (res == QMessageBox::Cancel) {
-                    m_toolChanging = ToolChangeState::NONE;
-                    qDebug() << "ToolChange: cancelled";
-                    on_cmdFileAbort_clicked();
-                } else if (res == QMessageBox::Ok) {
-                    on_cmdFilePause_clicked(false);
-                    m_toolChanging = ToolChangeState::PROBE;
-                }
-                return;
-            }
-
-            case ToolChangeState::PROBE: {
-                qDebug() << "ToolChange: PROBE";
-                on_cmdTouch_clicked();
-                m_toolChangeTargetStatusId = m_statusReceivedId + 2;
-                m_toolChanging = ToolChangeState::FINISH;
-                return;
-            }
-
-            case ToolChangeState::FINISH: {
-                if (!toolChangeReadyToContinue()) {
-                    return;
-                }
-                qDebug() << "ToolChange: FINISH";
-
-                // Ensure we are at a safe z
-                sendCommand("G53Z0F1000", -1, true);
-
-                // Restore the parser state to before we started the toolchange
-                sendCommand(m_toolChangeReturnParserStatus, -1, true);
-
-                // Pause for a couple seconds to let the spindle spool up
-                sendCommand("G4P2", -1, true);
-
-                m_currentModel->setData(m_currentModel->index(m_fileCommandIndex, 2), GCodeItem::Processed);
-                m_toolChanging = ToolChangeState::NONE;
-                m_fileCommandIndex++;
-                command = feedOverride(m_currentModel->data(m_currentModel->index(m_fileCommandIndex, 1)).toString());
-                return;
-            }
-
-            case ToolChangeState::NONE: {
-                QRegExp toolRe("^T(\\d+)");
-                if (toolRe.indexIn(command) != -1) {
-                    m_toolChangeTarget = toolRe.cap(1).toInt();
-                    m_toolChanging = ToolChangeState::BEGIN;
-                    return;
-                }
-                break;
-            }
-
-        }
-
 
         m_currentModel->setData(m_currentModel->index(m_fileCommandIndex, 2), GCodeItem::Sent);
-        sendCommand(command, m_fileCommandIndex, m_settings->showProgramCommands());
+        if (!sendCommand(command, m_fileCommandIndex, m_settings->showProgramCommands())) {
+            return;
+        }
         m_fileCommandIndex++;
         command = feedOverride(m_currentModel->data(m_currentModel->index(m_fileCommandIndex, 1)).toString());
 
@@ -2717,7 +2754,7 @@ void frmMain::on_cmdFilePause_clicked(bool checked)
 
 void frmMain::on_cmdFileReset_clicked()
 {
-    m_toolChanging = ToolChangeState::NONE;
+    m_toolChangeState = ToolChangeState::NONE;
     m_toolChangeTargetStatusId = 0;
     m_statusReceivedId = 0;
     m_fileCommandIndex = 0;

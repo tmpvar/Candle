@@ -291,7 +291,8 @@ private:
     QString m_toolChangeReturnParserStatus;
     int m_toolChangeTarget = -1;
 
-    ToolChangeState m_toolChanging = ToolChangeState::NONE;
+    ToolChangeState m_toolChangeState = ToolChangeState::NONE;
+    ToolChangeState m_toolChangeStatePrev = ToolChangeState::NONE;
     uint64_t m_toolChangeTargetStatusId = 0;
     QHash<int, ToolListEntry> m_toolList;
 
@@ -356,7 +357,7 @@ private:
     bool saveChanges(bool heightMapMode);
     void updateControlsState();
     void openPort();
-    void sendCommand(QString command, int tableIndex = -1, bool showInConsole = true);
+    bool sendCommand(QString command, int tableIndex = -1, bool showInConsole = true);
     bool dequeueCommand();
     void grblReset();
     int bufferLength();
@@ -404,6 +405,7 @@ private:
     void jogStep();
     void updateJogTitle();
     bool toolChangeReadyToContinue();
+    bool toolChangeProcess();
 };
 
 #endif // FRMMAIN_H
