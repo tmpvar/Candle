@@ -1978,11 +1978,22 @@ void frmMain::onActSendFromLineTriggered()
         QVector<QList<int>> lineIndexes = parser->getLinesIndexes();
 
         int lineNumber = m_currentModel->data(m_currentModel->index(commandIndex, 4)).toInt();
-        if (lineIndexes.at(lineNumber).isEmpty()) {
+        if (lineNumber < 0 || lineNumber >= lineIndexes.length() || lineIndexes.at(lineNumber).isEmpty()) {
+            on_cmdFileSend_clicked();
             return;
         }
 
         LineSegment* firstSegment = list.at(lineIndexes.at(lineNumber).first());
+
+        if (
+            qIsNaN(firstSegment->getStart().x()) ||
+            qIsNaN(firstSegment->getStart().y()) ||
+            qIsNaN(firstSegment->getStart().z())
+        ) {
+            on_cmdFileSend_clicked();
+            return;
+        }
+
         LineSegment* lastSegment = list.at(lineIndexes.at(lineNumber).last());
         LineSegment* feedSegment = lastSegment;
         int segmentIndex = list.indexOf(feedSegment);
