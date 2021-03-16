@@ -830,12 +830,23 @@ bool frmMain::dequeueCommand() {
     return true;
 }
 
-bool frmMain::sendCommand(QString command, int tableIndex, bool showInConsole)
-{
+bool frmMain::sendCommand(QString command, int tableIndex, bool showInConsole) {
     if (!m_serialPort.isOpen() || !m_resetCompleted) {
         return false;
     }
 
+    if (m_toolChangeState == ToolChangeState::NONE) {
+        queueCommand(command, tableIndex, showInConsole);
+
+        if (toolChangeProcess()) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void frmMain::queueCommand(QString command, int tableIndex, bool showInConsole) {
     command = command.toUpper();
     CommandQueue cq;
 
@@ -843,10 +854,6 @@ bool frmMain::sendCommand(QString command, int tableIndex, bool showInConsole)
     cq.tableIndex = tableIndex;
     cq.showInConsole = showInConsole;
     m_queue.append(cq);
-    if (toolChangeProcess()) {
-        return false;
-    }
-    return true;
 }
 
 void frmMain::grblReset()
@@ -870,6 +877,7 @@ void frmMain::grblReset()
     m_toolChangeState = ToolChangeState::NONE;
     m_toolChangeTargetStatusId = 0;
     m_statusReceivedId = 0;
+    m_toolChangePostCommands.clear();
 
     // Drop all remaining commands in buffer
     m_commands.clear();
@@ -1041,9 +1049,7 @@ void frmMain::onSerialPortReadyRead()
                 }
 
                 // Attempt to make progress on toolchange
-                if (m_toolChangeState != ToolChangeState::NONE) {
-                    sendNextFileCommands();
-                }
+                toolChangeProcess();
             }
 
             // Store work offset
@@ -1811,7 +1817,6 @@ void frmMain::loadFile(QList<QString> data)
 
     //        if (ps && (qIsNaN(ps->point()->x()) || qIsNaN(ps->point()->y()) || qIsNaN(ps->point()->z())))
     //                   qDebug() << "nan point segment added:" << *ps->point();
-            qDebug() << trimmed << "tool:" << QString::number(tool);
             item.command = trimmed;
             item.state = GCodeItem::InQueue;
             item.line = gp.getCommandNumber();
@@ -1931,15 +1936,11 @@ void frmMain::on_cmdFileSend_clicked()
 
     on_cmdFileReset_clicked();
 
-    m_startTime.start();
-
     m_transferCompleted = false;
     m_processingFile = true;
     m_fileEndSent = false;
 
-    m_statusReceivedId = 0;
-    m_toolChangeState = ToolChangeState::NONE;
-    m_toolChangeTargetStatusId = 0;
+    m_startTime.start();
 
     m_storedKeyboardControl = ui->chkKeyboardControl->isChecked();
     ui->chkKeyboardControl->setChecked(false);
@@ -2149,7 +2150,7 @@ bool frmMain::toolChangeReadyToContinue() {
 }
 
 bool frmMain::toolChangeProcess() {
-    if (m_queue.isEmpty()) {
+    if (m_queue.isEmpty() && m_toolChangeState == ToolChangeState::NONE) {
         return false;
     }
 
@@ -2166,6 +2167,10 @@ bool frmMain::toolChangeProcess() {
             }
 
             qDebug() << "ToolChange: BEGIN";
+            m_toolChangeTargetStatusId = m_statusReceivedId + 2;
+            m_toolChangeStatePrev = m_toolChangeState;
+            m_toolChangeState = ToolChangeState::CHANGING;
+
             m_toolChangeReturnPosition = QVector3D(
                 ui->txtWPosX->text().toDouble(),
                 ui->txtWPosY->text().toDouble(),
@@ -2175,16 +2180,13 @@ bool frmMain::toolChangeProcess() {
             m_toolChangeReturnParserStatus = m_storedParserStatus;
 
             // Turn the spindle off
-            sendCommand("M05M09", -1, true);
+            queueCommand("M05M09", -1, true);
             // Move the machine to a safe position for tool changes
-            sendCommand("G53 Z0 F1000", -1, true);
+            queueCommand("G53 Z0 F1000", -1, true);
             // TODO: make this configurable
-            sendCommand("G53 X0 Y-20 F1000", -1, true);
-            sendCommand("G4 P0", -1, true);
+            queueCommand("G53 X0 Y-20 F1000", -1, true);
+            queueCommand("G4 P0", -1, true);
 
-            m_toolChangeTargetStatusId = m_statusReceivedId + 2;
-            m_toolChangeStatePrev = m_toolChangeState;
-            m_toolChangeState = ToolChangeState::CHANGING;
             return true;
         }
 
@@ -2239,29 +2241,33 @@ bool frmMain::toolChangeProcess() {
             qDebug() << "ToolChange: FINISH";
 
             // Ensure we are at a safe z
-            sendCommand("G53Z0F1000", -1, true);
+            queueCommand("G53Z0F1000", -1, true);
 
             // Restore the parser state to before we started the toolchange
-            sendCommand(m_toolChangeReturnParserStatus, -1, true);
+            queueCommand(m_toolChangeReturnParserStatus, -1, true);
 
-            // m_currentModel->setData(m_currentModel->index(m_fileCommandIndex, 2), GCodeItem::Processed);
             m_toolChangeStatePrev = m_toolChangeState;
             m_toolChangeState = ToolChangeState::NONE;
-            // m_fileCommandIndex++;
+
+            if (m_processingFile) {
+                m_currentModel->setData(m_currentModel->index(m_fileCommandIndex, 2), GCodeItem::Processed);
+                m_fileCommandIndex++;
+            }
+
             bool did_pause = false;
             foreach (QString command, m_toolChangePostCommands) {
                 QRegExp pauseRe("^P0?4");
                 if (pauseRe.indexIn(command) > -1) {
                     did_pause = true;
                 }
-                sendCommand(command, -1, m_settings->showUICommands());
+                queueCommand(command, -1, m_settings->showUICommands());
             }
 
             m_toolChangePostCommands.clear();
 
             if (!did_pause) {
                 // Pause for a couple seconds to let the spindle spool up
-                sendCommand("G4P2", -1, true);
+                queueCommand("G4P2", -1, true);
             }
             return true;
         }
@@ -2283,6 +2289,7 @@ bool frmMain::toolChangeProcess() {
 
 void frmMain::sendNextFileCommands() {
     if (m_queue.length() > 0) return;
+    if (!m_processingFile) return;
 
     QString command = feedOverride(m_currentModel->data(m_currentModel->index(m_fileCommandIndex, 1)).toString());
 
@@ -2291,6 +2298,10 @@ void frmMain::sendNextFileCommands() {
         && m_fileCommandIndex < m_currentModel->rowCount() - 1
         && !(!m_commands.isEmpty() && m_commands.last().command.contains(QRegExp("M0*2|M30")))
     ) {
+        // Tool changing takes priority
+        if (m_toolChangeState != ToolChangeState::NONE) {
+            break;
+        }
 
         m_currentModel->setData(m_currentModel->index(m_fileCommandIndex, 2), GCodeItem::Sent);
         if (!sendCommand(command, m_fileCommandIndex, m_settings->showProgramCommands())) {
@@ -2642,57 +2653,43 @@ void frmMain::on_cmdHome_clicked()
 
 void frmMain::on_cmdTouch_clicked()
 {
-    #if 1
-        sendCommand("G21", -1, m_settings->showUICommands());
-        sendCommand("G90", -1, m_settings->showUICommands());
-        sendCommand("G53Z0F4000", -1, m_settings->showUICommands());
-        sendCommand(
-            QString("G53 X%1 Y%2").arg(
-                QString::number(m_settings->toolProbePositionX()),
-                QString::number(m_settings->toolProbePositionY())
-            ),
-            -1,
-            m_settings->showUICommands()
-        );
-        sendCommand("G91", -1, m_settings->showUICommands());
-        sendCommand(
-            QString("G38.2 Z%1 F%2").arg(
-                QString::number(m_settings->toolProbePositionZ()),
-                QString::number(m_settings->toolProbeSeek())
-            ),
-            -1,
-            m_settings->showUICommands()
-        );
-        sendCommand(
-            QString("G38.4 Z%1 F%2").arg(
-                QString::number(m_settings->toolProbeThrow()),
-                QString::number(m_settings->toolProbeFeed())
-            ),
-            -1,
-            m_settings->showUICommands()
-        );
-        sendCommand(
-            QString("G10 L20 P1 Z%1").arg(
-                QString::number(m_settings->toolProbeOffsetZ())
-            ),
-            -1,
-            m_settings->showUICommands()
-        );
-        sendCommand("G90", -1, m_settings->showUICommands());
-        sendCommand("G53G1Z0F1000", -1, m_settings->showUICommands());
-
-        // TODO: make this optional
-        // sendCommand("G54X0Y0Z0F4000", -1, m_settings->showUICommands());
-
-
-    #else
-
-        QStringList list = m_settings->touchCommand().split(";");
-
-        foreach (QString cmd, list) {
-            sendCommand(cmd.trimmed(), -1, m_settings->showUICommands());
-        }
-    #endif
+    queueCommand("G21", -1, m_settings->showUICommands());
+    queueCommand("G90", -1, m_settings->showUICommands());
+    queueCommand("G53Z0F4000", -1, m_settings->showUICommands());
+    queueCommand(
+        QString("G53 X%1 Y%2").arg(
+            QString::number(m_settings->toolProbePositionX()),
+            QString::number(m_settings->toolProbePositionY())
+        ),
+        -1,
+        m_settings->showUICommands()
+    );
+    queueCommand("G91", -1, m_settings->showUICommands());
+    queueCommand(
+        QString("G38.2 Z%1 F%2").arg(
+            QString::number(m_settings->toolProbePositionZ()),
+            QString::number(m_settings->toolProbeSeek())
+        ),
+        -1,
+        m_settings->showUICommands()
+    );
+    queueCommand(
+        QString("G38.4 Z%1 F%2").arg(
+            QString::number(m_settings->toolProbeThrow()),
+            QString::number(m_settings->toolProbeFeed())
+        ),
+        -1,
+        m_settings->showUICommands()
+    );
+    queueCommand(
+        QString("G10 L20 P1 Z%1").arg(
+            QString::number(m_settings->toolProbeOffsetZ())
+        ),
+        -1,
+        m_settings->showUICommands()
+    );
+    queueCommand("G90", -1, m_settings->showUICommands());
+    queueCommand("G53G1Z0F1000", -1, m_settings->showUICommands());
 }
 
 void frmMain::on_cmdZeroXY_clicked()
@@ -2793,12 +2790,15 @@ void frmMain::on_cmdFilePause_clicked(bool checked)
 void frmMain::on_cmdFileReset_clicked()
 {
     m_toolChangeState = ToolChangeState::NONE;
+    m_toolChangeStatePrev = ToolChangeState::NONE;
     m_toolChangeTargetStatusId = 0;
+    m_toolChangePostCommands.clear();
     m_statusReceivedId = 0;
     m_fileCommandIndex = 0;
     m_fileProcessedCommandIndex = 0;
     m_lastDrawnLineIndex = 0;
     m_probeIndex = -1;
+    m_processingFile = false;
 
     if (!m_heightMapMode) {
         QTime time;

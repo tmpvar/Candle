@@ -359,6 +359,10 @@ private:
     void updateControlsState();
     void openPort();
     bool sendCommand(QString command, int tableIndex = -1, bool showInConsole = true);
+    // directly add a command into the queue, usefull from inside of a modal operation
+    // such as a toolchange where `sendCommand` will intercept all messages.
+    void queueCommand(QString command, int tableIndex = -1, bool showInConsole = true);
+
     bool dequeueCommand();
     void grblReset();
     int bufferLength();
