@@ -295,7 +295,8 @@ private:
     ToolChangeState m_toolChangeStatePrev = ToolChangeState::NONE;
     uint64_t m_toolChangeTargetStatusId = 0;
     QHash<int, ToolListEntry> m_toolList;
-    QStringList m_toolChangePostCommands;
+    QList<CommandQueue> m_toolChangePostCommands;
+    int m_resumingIndex = -1;
 
     // Console window
     int m_storedConsoleMinimumHeight;
@@ -362,6 +363,8 @@ private:
     // directly add a command into the queue, usefull from inside of a modal operation
     // such as a toolchange where `sendCommand` will intercept all messages.
     void queueCommand(QString command, int tableIndex = -1, bool showInConsole = true);
+
+    void addPostToolChangeCommand(QString command, int tableIndex = -1, bool showInConsole = true);
 
     bool dequeueCommand();
     void grblReset();

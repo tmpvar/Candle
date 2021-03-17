@@ -846,6 +846,14 @@ bool frmMain::sendCommand(QString command, int tableIndex, bool showInConsole) {
     return true;
 }
 
+void frmMain::addPostToolChangeCommand(QString command, int tableIndex, bool showInConsole) {
+    CommandQueue cq;
+    cq.command = command.toUpper();
+    cq.tableIndex = tableIndex;
+    cq.showInConsole = showInConsole;
+    m_toolChangePostCommands.append(cq);
+}
+
 void frmMain::queueCommand(QString command, int tableIndex, bool showInConsole) {
     command = command.toUpper();
     CommandQueue cq;
@@ -853,6 +861,11 @@ void frmMain::queueCommand(QString command, int tableIndex, bool showInConsole) 
     cq.command = command;
     cq.tableIndex = tableIndex;
     cq.showInConsole = showInConsole;
+
+    if (cq.tableIndex > -1 && cq.tableIndex < m_currentModel->data().length()) {
+        m_currentModel->setData(m_currentModel->index(cq.tableIndex, 2), GCodeItem::Sent);
+    }
+
     m_queue.append(cq);
 }
 
@@ -866,6 +879,7 @@ void frmMain::grblReset()
     m_processingFile = false;
     m_transferCompleted = true;
     m_fileCommandIndex = 0;
+    m_resumingIndex = -1;
 
     m_reseting = true;
     m_homing = false;
@@ -1415,6 +1429,7 @@ void frmMain::onSerialPortReadyRead()
                     m_processingFile = false;
                     m_transferCompleted = true;
                     m_fileCommandIndex = 0;
+                    m_resumingIndex = -1;
 
                     m_reseting = false;
                     m_homing = false;
@@ -1971,6 +1986,7 @@ void frmMain::onActSendFromLineTriggered()
     //Line to start from
     int commandIndex = ui->tblProgram->currentIndex().row();
 
+    bool skipCurrentLine = false;
     // Set parser state
     if (m_settings->autoLine()) {
         GcodeViewParse *parser = m_currentDrawer->viewParser();
@@ -1999,41 +2015,69 @@ void frmMain::onActSendFromLineTriggered()
         int segmentIndex = list.indexOf(feedSegment);
         while (feedSegment->isFastTraverse() && segmentIndex > 0) feedSegment = list.at(--segmentIndex);
 
+        bool resumeInArc = lastSegment->isArc();
         m_toolChangePostCommands.clear();
-
         int targetTool = -1;
         if (m_currentModel->data().length() > commandIndex) {
             auto item = m_currentModel->data().at(commandIndex);
             targetTool = item.tool;
         }
 
-        m_toolChangePostCommands.append(QString("G90 G53 G0 Z0 F1000"));
-        m_toolChangePostCommands.append(QString("M3 S%1").arg(qMax<double>(lastSegment->getSpindleSpeed(), ui->slbSpindle->value())));
-        m_toolChangePostCommands.append(QString("M04 P2"));
+        addPostToolChangeCommand(QString("G90 G53 G0 Z0 F1000"), -1, m_settings->showUICommands());
+        addPostToolChangeCommand(QString("M3 S%1").arg(qMax<double>(lastSegment->getSpindleSpeed(), ui->slbSpindle->value())), -1, m_settings->showUICommands());
+        addPostToolChangeCommand(QString("G4 P2"), -1, m_settings->showUICommands());
 
-        m_toolChangePostCommands.append(QString("G21 G90 G0 X%1 Y%2")
-                        .arg(firstSegment->getStart().x())
-                        .arg(firstSegment->getStart().y()));
-        m_toolChangePostCommands.append(QString("G1 Z%1 F%2")
-                        .arg(firstSegment->getStart().z())
-                        .arg(feedSegment->getSpeed()));
+        addPostToolChangeCommand(
+            QString("G21 G90 G0 X%1 Y%2")
+                .arg(firstSegment->getStart().x())
+                .arg(firstSegment->getStart().y()),
+            -1,
+            m_settings->showUICommands()
+        );
 
-        m_toolChangePostCommands.append(QString("%1 %2 %3 F%4")
-                        .arg(lastSegment->isMetric() ? "G21" : "G20")
-                        .arg(lastSegment->isAbsolute() ? "G90" : "G91")
-                        .arg(lastSegment->isFastTraverse() ? "G0" : "G1")
-                        .arg(lastSegment->isMetric() ? feedSegment->getSpeed() : feedSegment->getSpeed() / 25.4));
+        addPostToolChangeCommand(
+            QString("G1 Z%1 F%2")
+                .arg(firstSegment->getStart().z())
+                .arg(feedSegment->getSpeed()),
+            -1,
+            m_settings->showUICommands()
+        );
 
+        addPostToolChangeCommand(
+            QString("%1 %2 %3 F%4")
+                .arg(lastSegment->isMetric() ? "G21" : "G20")
+                .arg(lastSegment->isAbsolute() ? "G90" : "G91")
+                .arg(lastSegment->isFastTraverse() ? "G0" : "G1")
+                .arg(lastSegment->isMetric() ? feedSegment->getSpeed() : feedSegment->getSpeed() / 25.4),
+            -1,
+            m_settings->showUICommands()
+        );
 
+        // TODO: use the actual WCS
+        addPostToolChangeCommand("G54", -1, m_settings->showUICommands());
 
-        if (lastSegment->isArc()) {
-            m_toolChangePostCommands.append(lastSegment->plane() == PointSegment::XY ? "G17"
+        if (resumeInArc) {
+            addPostToolChangeCommand(lastSegment->plane() == PointSegment::XY ? "G17"
             : lastSegment->plane() == PointSegment::ZX ? "G18" : "G19");
+
+            QString command = m_currentModel->data().at(commandIndex).command;
+
+            // Add G2/G3 if not included in the original line
+            QRegExp arcRe("G0?[23]");
+            if (arcRe.indexIn(command) == -1) {
+                skipCurrentLine = true;
+                QString dir = firstSegment->isClockwise() ? "G2" : "G3";
+                command = dir + command;
+            }
+            addPostToolChangeCommand(command, commandIndex, m_settings->showUICommands());
         }
 
-        QStringList commands = m_toolChangePostCommands;
+        QStringList commands;
         if (targetTool > -1) {
-            commands.prepend(QString("T%1").arg(targetTool));
+            commands.append(QString("T%1").arg(targetTool));
+        }
+        foreach (CommandQueue cq, m_toolChangePostCommands) {
+            commands.append(cq.command);
         }
 
         QMessageBox box(this);
@@ -2044,12 +2088,12 @@ void frmMain::onActSendFromLineTriggered()
         box.addButton(tr("Skip"), QMessageBox::DestructiveRole);
 
         int res = box.exec();
-        if (res == QMessageBox::Cancel) return;
-        else if (res == QMessageBox::Ok) {
-            sendCommand(QString("T%1").arg(targetTool), -1, m_settings->showUICommands());
+        if (res == QMessageBox::Cancel) {
+             return;
         } else {
-            foreach (QString command, m_toolChangePostCommands) {
-                sendCommand(command, -1, m_settings->showUICommands());
+            sendCommand(QString("T%1").arg(targetTool), -1, m_settings->showUICommands());
+            if (res != QMessageBox::Ok) {
+                m_toolChangePostCommands.clear();
             }
         }
     }
@@ -2101,6 +2145,18 @@ void frmMain::onActSendFromLineTriggered()
     updateControlsState();
     ui->cmdFilePause->setFocus();
 
+    // Move past the selected line as we are adding it to the queue manually
+    // this can occur when resuming in an arc that does not include G2/G3
+    if (skipCurrentLine) {
+        commandIndex++;
+    }
+
+    // When resuming we run a toolchange to ensure the correct tool is in the spindle
+    // unfortunately the toolchange routine is generally concerned with program lines
+    // and it will incorrectly change the status of the current line. This effectively
+    // signals to the toolchange routine that it should skip updating the program line's
+    // status.
+    m_resumingIndex = commandIndex;
     m_fileCommandIndex = commandIndex;
     m_fileProcessedCommandIndex = commandIndex;
     sendNextFileCommands();
@@ -2260,18 +2316,18 @@ bool frmMain::toolChangeProcess() {
             m_toolChangeStatePrev = m_toolChangeState;
             m_toolChangeState = ToolChangeState::NONE;
 
-            if (m_processingFile) {
+            if (m_processingFile && m_resumingIndex != m_fileCommandIndex) {
                 m_currentModel->setData(m_currentModel->index(m_fileCommandIndex, 2), GCodeItem::Processed);
                 m_fileCommandIndex++;
             }
 
             bool did_pause = false;
-            foreach (QString command, m_toolChangePostCommands) {
-                QRegExp pauseRe("^P0?4");
-                if (pauseRe.indexIn(command) > -1) {
+            foreach (CommandQueue cq, m_toolChangePostCommands) {
+                QRegExp pauseRe("^G0?4");
+                if (pauseRe.indexIn(cq.command) > -1) {
                     did_pause = true;
                 }
-                queueCommand(command, -1, m_settings->showUICommands());
+                queueCommand(cq.command, cq.tableIndex, cq.showInConsole);
             }
 
             m_toolChangePostCommands.clear();
@@ -2314,7 +2370,6 @@ void frmMain::sendNextFileCommands() {
             break;
         }
 
-        m_currentModel->setData(m_currentModel->index(m_fileCommandIndex, 2), GCodeItem::Sent);
         if (!sendCommand(command, m_fileCommandIndex, m_settings->showProgramCommands())) {
             return;
         }
@@ -2629,7 +2684,6 @@ void frmMain::updateParser()
     ui->tblProgram->setUpdatesEnabled(true);
 
     parser->reset();
-
     updateProgramEstimatedTime(parser->getLinesFromParser(&gp, m_settings->arcPrecision(), m_settings->arcDegreeMode()));
     m_currentDrawer->update();
     ui->glwVisualizer->updateExtremes(m_currentDrawer);
@@ -2806,6 +2860,7 @@ void frmMain::on_cmdFileReset_clicked()
     m_toolChangePostCommands.clear();
     m_statusReceivedId = 0;
     m_fileCommandIndex = 0;
+    m_resumingIndex = -1;
     m_fileProcessedCommandIndex = 0;
     m_lastDrawnLineIndex = 0;
     m_probeIndex = -1;
@@ -3628,6 +3683,7 @@ void frmMain::on_cmdHeightMapMode_toggled(bool checked)
 
     // Reset file progress
     m_fileCommandIndex = 0;
+    m_resumingIndex = -1;
     m_fileProcessedCommandIndex = 0;
     m_lastDrawnLineIndex = 0;
 
