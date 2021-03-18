@@ -23,6 +23,7 @@ PointSegment::PointSegment()
     m_spindleSpeed = 0;
     m_dwell = 0;
     m_plane = XY;
+    m_wcs = 0; // G53
 }
 
 PointSegment::PointSegment(PointSegment *ps) : PointSegment(ps->point(), ps->getLineNumber())
@@ -33,6 +34,7 @@ PointSegment::PointSegment(PointSegment *ps) : PointSegment(ps->point(), ps->get
     this->m_isZMovement = ps->isZMovement();
     this->m_isFastTraverse = ps->isFastTraverse();
     this->m_isAbsolute = ps->isAbsolute();
+    this->m_wcs = ps->getWCS();
 
     if (ps->isArc()) {
         this->setArcCenter(ps->center());
@@ -241,4 +243,10 @@ void PointSegment::setDwell(double dwell)
     m_dwell = dwell;
 }
 
+int PointSegment::getWCS() {
+    return m_wcs;
+}
 
+void PointSegment::setWCS(int wcs) {
+    m_wcs = wcs;
+}

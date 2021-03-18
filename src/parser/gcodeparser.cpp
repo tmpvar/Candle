@@ -268,6 +268,7 @@ PointSegment *GcodeParser::addLinearPointSegment(const QVector3D &nextPoint, boo
     ps->setIsAbsolute(this->m_inAbsoluteMode);
     ps->setSpeed(fastTraverse ? this->m_traverseSpeed : this->m_lastSpeed);
     ps->setSpindleSpeed(this->m_lastSpindleSpeed);
+    ps->setWCS(m_wcs);
     this->m_points.append(ps);
 
     // Save off the endpoint.
@@ -312,6 +313,7 @@ PointSegment *GcodeParser::addArcPointSegment(const QVector3D &nextPoint, bool c
     ps->setSpeed(this->m_lastSpeed);
     ps->setSpindleSpeed(this->m_lastSpindleSpeed);
     ps->setPlane(m_currentPlane);
+    ps->setWCS(m_wcs);
     this->m_points.append(ps);
 
     // Save off the endpoint.
@@ -341,6 +343,7 @@ PointSegment * GcodeParser::handleGCode(float code, const QStringList &args)
     else if (code == 19.0f) this->m_currentPlane = PointSegment::YZ;
     else if (code == 20.0f) this->m_isMetric = false;
     else if (code == 21.0f) this->m_isMetric = true;
+    else if (code >= 54.0f && code <= 59) this->m_wcs = (int)code - 53;
     else if (code == 90.0f) this->m_inAbsoluteMode = true;
     else if (code == 90.1f) this->m_inAbsoluteIJKMode = true;
     else if (code == 91.0f) this->m_inAbsoluteMode = false;

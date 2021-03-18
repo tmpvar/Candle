@@ -69,6 +69,9 @@ public:
     PointSegment::planes plane() const;
     void setPlane(const PointSegment::planes &plane);
 
+    int wcs();
+    void setWCS(int wcs);
+
 private:
     int m_toolhead;
     double m_speed;
@@ -87,6 +90,7 @@ private:
     bool m_isAbsolute;
     bool m_isHightlight;
     int m_vertexIndex;
+    int m_wcs;
 
     PointSegment::planes m_plane;
 };

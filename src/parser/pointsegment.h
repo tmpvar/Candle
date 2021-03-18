@@ -65,6 +65,9 @@ public:
     double getDwell() const;
     void setDwell(double dwell);
 
+    int getWCS();
+    void setWCS(int wcs);
+
 private:
     ArcProperties *m_arcProperties;
     int m_toolhead;
@@ -78,6 +81,7 @@ private:
     bool m_isFastTraverse;
     bool m_isAbsolute;
     int m_lineNumber;
+    int m_wcs;
     planes m_plane;
 };
 

@@ -332,6 +332,7 @@ private:
     // Current values
     int m_lastDrawnLineIndex;
     int m_lastGrblStatus;
+    int m_wcs;
     double m_originalFeed;
 
     // Keyboard

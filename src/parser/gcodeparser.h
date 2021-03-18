@@ -61,6 +61,8 @@ private:
     int m_commandNumber;
     PointSegment::planes m_currentPlane;
 
+    int m_wcs = 0;
+
     // Settings
     double m_speedOverride;
     int m_truncateDecimalLength;

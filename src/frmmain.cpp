@@ -1219,10 +1219,16 @@ void frmMain::onSerialPortReadyRead()
                         if (m_processingFile) storeParserState();
 
                         // Spindle speed
-                        QRegExp rx(".*S([\\d\\.]+)");
-                        if (rx.indexIn(response) != -1) {
-                            double speed = toMetric(rx.cap(1).toDouble()); //RPM in imperial?
+                        QRegExp spindleRe(".*S([\\d\\.]+)");
+                        if (spindleRe.indexIn(response) != -1) {
+                            double speed = toMetric(spindleRe.cap(1).toDouble()); //RPM in imperial?
                             ui->slbSpindle->setCurrentValue(speed);
+                        }
+
+                        // WCS
+                        QRegExp wcsRe("G5([4-9]+)");
+                        if (wcsRe.indexIn(response) != -1) {
+                            m_wcs = wcsRe.cap(1).toInt() - 3;
                         }
 
                         m_updateParserStatus = true;
@@ -2053,8 +2059,7 @@ void frmMain::onActSendFromLineTriggered()
             m_settings->showUICommands()
         );
 
-        // TODO: use the actual WCS
-        addPostToolChangeCommand("G54", -1, m_settings->showUICommands());
+        addPostToolChangeCommand(QString("G5%1").arg(lastSegment->wcs() + 3), -1, m_settings->showUICommands());
 
         if (resumeInArc) {
             addPostToolChangeCommand(lastSegment->plane() == PointSegment::XY ? "G17"

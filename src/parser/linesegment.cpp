@@ -237,6 +237,14 @@ void LineSegment::setPlane(const PointSegment::planes &plane)
     m_plane = plane;
 }
 
+int LineSegment::wcs() {
+    return m_wcs;
+}
+
+void LineSegment::setWCS(int wcs) {
+    m_wcs = wcs;
+}
+
 
 
 

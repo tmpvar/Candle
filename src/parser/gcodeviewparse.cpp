@@ -120,8 +120,8 @@ QList<LineSegment*> GcodeViewParse::getLinesFromParser(GcodeParser *gp, double a
         end = ps->point();
 
         // start is null for the first iteration.
-        if (start != NULL) {           
-            // Expand arc for graphics.            
+        if (start != NULL) {
+            // Expand arc for graphics.
             if (ps->isArc()) {
                 QList<QVector3D> points =
                     GcodePreprocessorUtils::generatePointsAlongArcBDring(ps->plane(),
@@ -142,6 +142,7 @@ QList<LineSegment*> GcodeViewParse::getLinesFromParser(GcodeParser *gp, double a
                         ls->setSpeed(ps->getSpeed());
                         ls->setSpindleSpeed(ps->getSpindleSpeed());
                         ls->setDwell(ps->getDwell());
+                        ls->setWCS(ps->getWCS());
                         this->testExtremes(nextPoint);
                         m_lines.append(ls);
                         m_lineIndexes[ps->getLineNumber()].append(m_lines.count() - 1);
