@@ -430,19 +430,19 @@ void GLWidget::paintEvent(QPaintEvent *pe) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Shader drawable points
-    glEnable(GL_PROGRAM_POINT_SIZE);
+    //glEnable(GL_PROGRAM_POINT_SIZE);
 
     // Update settings
     if (m_antialiasing) {
-        if (m_msaa) glEnable(GL_MULTISAMPLE); else {
-            glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-            glEnable(GL_LINE_SMOOTH);
-            glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
-            glEnable(GL_POINT_SMOOTH);
+        // if (m_msaa) glEnable(GL_MULTISAMPLE); else {
+        //    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+        //    glEnable(GL_LINE_SMOOTH);
+        //    glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
+        //    glEnable(GL_POINT_SMOOTH);
 
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glEnable(GL_BLEND);
-        }
+        // }
     }
     if (m_zBuffer) glEnable(GL_DEPTH_TEST);
 
@@ -469,8 +469,8 @@ void GLWidget::paintEvent(QPaintEvent *pe) {
 
     // Draw 2D
     glDisable(GL_DEPTH_TEST);
-    glDisable(GL_MULTISAMPLE);
-    glDisable(GL_LINE_SMOOTH);
+    //glDisable(GL_MULTISAMPLE);
+    //glDisable(GL_LINE_SMOOTH);
     glDisable(GL_BLEND);
 
     painter.endNativePainting();
