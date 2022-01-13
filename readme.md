@@ -19,6 +19,12 @@ Build requirements:
 ------------------
 Qt 5.4.2 with MinGW/GCC compiler
 
+## Ubuntu
+
+```
+sudo apt install qt5-default libqt5serialport5-dev
+```
+
 Downloads:
 ----------
 Experimental versions:
